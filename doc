@@ -1,0 +1,5 @@
+How to now which and where to load and start application
+1) Appalication == Service
+2) Service resides in a vm
+3) Each vm has rd application, initiated the application needs
+4)
