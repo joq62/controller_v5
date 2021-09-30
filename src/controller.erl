@@ -82,7 +82,8 @@ init()->
     mnesia:start(),
     Appfile=atom_to_list(?MODULE)++".app",
     [{nodes,Nodes}]=appfile:read(Appfile,env),
-    Result=case [Node||Node<-Nodes,pong=:=net_adm:ping(Node)] of
+    Result=case [Node||Node<-Nodes,rpc:call(Node,db_lock,check_init,[],2000)=:=ok] of
+
 	       []-> % First Node
 		   ok=db_lock:create_table(),
 		   {atomic,ok}=db_lock:create(?Lock,1,node()),
