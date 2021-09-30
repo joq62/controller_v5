@@ -52,7 +52,7 @@ start()->
 
 setup()->
 
-    ok=application:start(controller),
+   % ok=application:start(controller),
  
     ok.
 

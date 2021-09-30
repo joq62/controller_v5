@@ -33,14 +33,14 @@ start()->
     ok=setup(),
     io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
+    io:format("~p~n",[{"Start init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=init_start(),
+    io:format("~p~n",[{"Stop init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
     
     io:format("~p~n",[{"Start pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
     ok=pass_0(),
     io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=init_start(),
-    io:format("~p~n",[{"Stop init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
       %% End application tests
     io:format("~p~n",[{"Start cleanup",?MODULE,?FUNCTION_NAME,?LINE}]),
     ok=cleanup(),
@@ -50,35 +50,30 @@ start()->
     ok.
 
 
+
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% --------------------------------------------------------------------
+backup_log_dir()->
+    os:cmd("rm -rf  logs"),
+    file:make_dir("logs"),
+    os:cmd("cp apps/*/log/* logs"),
+    
+    ok.
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
 init_start()->
-
-    %% Load dbase_dist local
-    HostId=net_adm:localhost(),
-    DbaseNode=list_to_atom("dbase_dist@"++HostId),
-    rpc:call(DbaseNode,init,stop,[],2000),
-    os:cmd("rm -rf dbase_dist"),
-    io:format("git clone ~p~n",[os:cmd("git clone https://github.com/joq62/dbase_dist.git")]),
-  
-    true=code:add_patha("dbase_dist/ebin"),
-    ok=application:start(dbase_dist),
-    db_host_spec:create_table(),
-    db_host_spec:git_init(),
+    % This is according to normal start on a host
+  %  backup_log_dir(),
+    % git clone ...controller.git
+    ok=application:start(controller),
     
-
-    %% Start Hosts HostId@HostId
-    
-    
-
-    %%
-    Env=appfile:read("controller.app",env),
-    {hosts,Hosts}=lists:keyfind(hosts,1,Env),
-    GitPath=appfile:read("controller.app",git_path),
-    io:format("Hosts, GitPath ~p~n",[{Hosts, GitPath}]),
     ok.
 
 %% --------------------------------------------------------------------
@@ -88,17 +83,27 @@ init_start()->
 %% --------------------------------------------------------------------
 pass_0()->
     [{application,controller,
-      [{description,"Controller application and cluster"},
-       {vsn,"0.1.0"},
-       {modules,[controller,controller_sup,controller_server]},
-       {registered,[controller]},
-       {applications,[kernel,stdlib]},
-       {mod,{controller,[]}},
-       {start_phases,[]},
-       {git_path,"https://github.com/joq62/controller.git"},
-       {env,[{hosts,["c0","c2","joq62-X550CA"]}]}]}]=appfile:read("controller.app",all),
+     [{description,"Controller application and cluster"},
+      {vsn,"0.1.0"},
+      {modules,[controller,controller_sup,controller_server]},
+      {registered,[controller]},
+      {applications,[kernel,stdlib]},
+      {mod,{controller,[]}},
+      {start_phases,[]},
+      {git_path,"https://github.com/joq62/controller.git"},
+      {env,[{nodes,['controller@c0',
+		    'controller@c2',
+		    'controller@joq62-X550CA'
+		   ]}
+	   ]
+      }
+     ]
+     }
+    ]=appfile:read("controller.app",all),
     "https://github.com/joq62/controller.git"=appfile:read("controller.app",git_path),
-    [{hosts,["c0","c2","joq62-X550CA"]}]=appfile:read("controller.app",env),
+    [{nodes,['controller@c0',
+	     'controller@c2',
+	     'controller@joq62-X550CA']}]=appfile:read("controller.app",env),
     {error,[eexists,glurk,read_app_file,appfile,_Line]}=appfile:read("controller.app",glurk),
     {error,enoent}=appfile:read("glurk.app",git_path),
     ok.

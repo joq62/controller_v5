@@ -26,7 +26,7 @@
 %% --------------------------------------------------------------------
 %% Macros
 %% --------------------------------------------------------------------
--define(Lock,controller_lock).
+
 %% --------------------------------------------------------------------
 %% Records
 %% --------------------------------------------------------------------
@@ -74,9 +74,9 @@ init()->
     Result=case [Node||Node<-Nodes,pong=:=net_adm:ping(Node)] of
 	       []-> % First Node
 		   ok=db_lock:create_table(),
-		   {atomic,ok}=db_lock:create(?Lock,1,node()),
-		   true=db_lock:is_open(?Lock,node(),2),
-		   true=db_lock:is_leader(?Lock,node()),
+		   {atomic,ok}=db_lock:create(controller_lock,1,node()),
+		   true=db_lock:is_open(controller_lock,node(),2),
+		   true=db_lock:is_leader(controller_lock,node()),
 		   ok;
 	       ConnectedNodes->
 		   add_this_node(ConnectedNodes,false),
