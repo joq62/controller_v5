@@ -53,30 +53,55 @@ add_node(Node,StorageType)->
 
 read_all_info() ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE)])),
-    [{LockId,Time,Leader}||{?RECORD,LockId,Time,Leader}<-Z].
+    Result=case Z of
+	       {aborted,Reason}->
+		   {aborted,Reason};
+	       _->
+		   [{LockId,Time,Leader}||{?RECORD,LockId,Time,Leader}<-Z]
+	   end,
+    Result.
 
 read_all() ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE)])),
-    [LockId||{?RECORD,LockId,_Time,_Leader}<-Z].
-
+    Result=case Z of
+	       {aborted,Reason}->
+		   {aborted,Reason};
+	       _->
+		   [LockId||{?RECORD,LockId,_Time,_Leader}<-Z]
+	   end,
+    Result.
 	
 
 
 read(Object) ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE),
 		   X#?RECORD.lock_id==Object])),
-    [{YLockId,Time,Leader}||{?RECORD,YLockId,Time,Leader}<-Z].
+    Result=case Z of
+	       {aborted,Reason}->
+		   {aborted,Reason};
+	       _->
+		   [{YLockId,Time,Leader}||{?RECORD,YLockId,Time,Leader}<-Z]
+	   end,
+    Result.
 
 leader(Object)->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE),
 		     X#?RECORD.lock_id==Object])),
-    [Leader||{?RECORD,_LockId,_Time,Leader}<-Z].
+    Result=case Z of
+	       {aborted,Reason}->
+		   {aborted,Reason};
+	       _->
+		   [Leader||{?RECORD,_LockId,_Time,Leader}<-Z]
+	   end,
+    Result.
     
 is_leader(Object,Node)->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE),
 		     X#?RECORD.lock_id==Object,
 		     X#?RECORD.leader==Node])),
     Result=case Z of
+	       {aborted,Reason}->
+		   {aborted,Reason};	       
 	       []->
 		   false;
 	       _->
