@@ -79,6 +79,42 @@ init()->
     {support_applications,Applications}=lists:keyfind(support_applications,1,Env),
     [application:set_env(Application,nodes,Nodes)||Application<-Applications],
     [net_adm:ping(Node)||Node<-Nodes],
-    [application:start(Application)||Application<-Applications],
-      
-    ok.
+    
+    os:cmd("rm -rf  logs"),
+    file:make_dir("logs"),
+    os:cmd("cp apps/*/log/* logs"),
+    %% Init dbase
+    mnesia:stop(),
+    mnesia:delete_schema([node()]),
+    mnesia:start(),
+ 
+    Result=case [Node||Node<-Nodes,
+		       Node/=node(),
+		       rpc:call(Node,db_lock,check_init,[],2000)=:=ok] of
+
+	       []-> % First Node
+		   ok=db_lock:create_table(),
+		   {atomic,ok}=db_lock:create(?Lock,1,node()),
+		   true=db_lock:is_open(?Lock,node(),2),
+		   true=db_lock:is_leader(?Lock,node()),
+		   ok;
+	       ConnectedNodes->
+		   add_this_node(ConnectedNodes,false),
+		   ok
+	   end,
+    Result.	    
+
+add_this_node([],Result)->
+    Result;
+add_this_node(_,ok) ->
+    ok;
+add_this_node([Node1|T],_Acc)->
+    NewAcc=case rpc:call(Node1,db_lock,add_node,[node(),ram_copies],5000) of
+	       {badrpc,_}->
+		   false;
+	       ok->
+		   ok;
+	       _Error->
+		   false
+	   end,
+    add_this_node(T,NewAcc).	    
