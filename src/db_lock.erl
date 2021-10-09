@@ -20,6 +20,8 @@ check_init()->
 		     {error,[mnesia_not_started]};
 		 {aborted,{no_exists,{lock,disc_copies}}}->
 		     {error,[not_initiated,?MODULE]};
+		 false->
+		     {error,false};
 		 _->
 		     ok
 	     end,
@@ -28,6 +30,8 @@ check_init()->
 create_table()->
     mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}]),
     mnesia:wait_for_tables([?TABLE], 20000).
+delete_table_copy(Dest)->
+    mnesia:del_table_copy(?TABLE,Dest).
 
 create(LockId,Time,Leader) ->
     F = fun() ->
@@ -39,13 +43,29 @@ create(LockId,Time,Leader) ->
 		mnesia:write(Record) end,
     mnesia:transaction(F).
 
-add_node(Node,StorageType)->
-    Result=case mnesia:change_config(extra_db_nodes, [Node]) of
-	       {ok,[Node]}->
-		   mnesia:add_table_copy(schema, node(),StorageType),
-		   mnesia:add_table_copy(?TABLE, node(), StorageType),
+add_table(Node,StorageType)->
+    mnesia:add_table_copy(?TABLE, Node, StorageType).
+
+
+add_table(StorageType)->
+    mnesia:add_table_copy(?TABLE, node(), StorageType),
+    Tables=mnesia:system_info(tables),
+    mnesia:wait_for_tables(Tables,20*1000).
+
+add_node(Dest,Source,StorageType)->
+    mnesia:del_table_copy(schema,Dest),
+    mnesia:del_table_copy(?TABLE,Dest),
+    io:format("Node~p~n",[{Dest,Source,?FUNCTION_NAME,?MODULE,?LINE}]),
+    Result=case mnesia:change_config(extra_db_nodes, [Dest]) of
+	       {ok,[Dest]}->
+		 %  io:format("add_table_copy(schema) ~p~n",[{Dest,Source, mnesia:add_table_copy(schema,Source,StorageType),?FUNCTION_NAME,?MODULE,?LINE}]),
+		   mnesia:add_table_copy(schema,Source,StorageType),
+		%   io:format("add_table_copy(table) ~p~n",[{Dest,Source, mnesia:add_table_copy(?TABLE,Dest,StorageType),?FUNCTION_NAME,?MODULE,?LINE}]),
+		   mnesia:add_table_copy(?TABLE, Source, StorageType),
 		   Tables=mnesia:system_info(tables),
-		   mnesia:wait_for_tables(Tables,20*1000);
+		%   io:format("Tables~p~n",[{Tables,Dest,node(),?FUNCTION_NAME,?MODULE,?LINE}]),
+		   mnesia:wait_for_tables(Tables,20*1000),
+		   ok;
 	       Reason ->
 		   Reason
 	   end,
@@ -142,7 +162,7 @@ is_open(Object,Node,LockTimeOut)->
 	   end,
     IsOpen.
 		      
-	      
+
 delete(Object) ->
 
     F = fun() -> 

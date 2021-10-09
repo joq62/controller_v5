@@ -77,8 +77,16 @@ init()->
     {nodes,Nodes}=lists:keyfind(nodes,1,Env),
     {dir_logs,DirLogs}=lists:keyfind(dir_logs,1,Env),
     {support_applications,Applications}=lists:keyfind(support_applications,1,Env),
+    
     [application:set_env(Application,nodes,Nodes)||Application<-Applications],
+
+    %connect
     [net_adm:ping(Node)||Node<-Nodes],
+    
+    %
+    DbaseNode=[lists:delete(node(),Nodes)|Nodes],
+    ok=dbase:dynamic_db_init(DbaseNode),
+
     [application:start(Application)||Application<-Applications],
       
     ok.
