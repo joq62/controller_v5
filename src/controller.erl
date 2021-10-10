@@ -81,12 +81,12 @@ init()->
     [application:set_env(Application,nodes,Nodes)||Application<-Applications],
 
     %connect
-    [net_adm:ping(Node)||Node<-Nodes],
-    
-    %
-    DbaseNode=[lists:delete(node(),Nodes)|Nodes],
-    ok=dbase:dynamic_db_init(DbaseNode),
+    _DbgInfo=[{Node,net_adm:ping(Node)}||Node<-Nodes],
+    DbaseNodes=[Node||Node<-[lists:delete(node(),Nodes)|Nodes],
+		      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
+  %  io:format("node(),DbaseNodes ~p~n",[{node(),DbaseNodes,?FUNCTION_NAME,?MODULE,?LINE}]),
+    ok=dbase:dynamic_db_init(DbaseNodes),
 
     [application:start(Application)||Application<-Applications],
-      
+    timer:sleep(1000),
     ok.
