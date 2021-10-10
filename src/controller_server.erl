@@ -51,7 +51,7 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    
+    rpc:cast(node(),db_logger,create,["log","starting server"," ",{?MODULE,?FUNCTION_NAME,?LINE}]),
    
     {ok, #state{}
     }.

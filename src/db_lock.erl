@@ -28,7 +28,7 @@ check_init()->
     Result.
 
 create_table()->
-    mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}]),
+    {atomic,ok}=mnesia:create_table(?TABLE, [{attributes, record_info(fields, ?RECORD)}]),
     mnesia:wait_for_tables([?TABLE], 20000).
 delete_table_copy(Dest)->
     mnesia:del_table_copy(?TABLE,Dest).
