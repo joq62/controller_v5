@@ -14,5 +14,5 @@
 	     ]},
       {dir_applications,"applications"},
       {dir_logs,"logs"},
-      {support_applications,[dbase_dist,bully]}]}
+      {support_applications,[common,bully]}]}
 ]}.
