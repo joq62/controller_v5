@@ -33,15 +33,19 @@ start()->
     ok=setup(),
     io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=init_start(),
-    io:format("~p~n",[{"Stop init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  io:format("~p~n",[{"Start init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  ok=init_start(),
+  %  io:format("~p~n",[{"Stop init_start()",?MODULE,?FUNCTION_NAME,?LINE}]),
     
-    io:format("~p~n",[{"Start pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass_0(),
-    io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   io:format("~p~n",[{"Start pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   ok=pass_0(),
+ %   io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-      %% End application tests
+    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass_1(),
+    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ 
+     %% End application tests
     io:format("~p~n",[{"Start cleanup",?MODULE,?FUNCTION_NAME,?LINE}]),
     ok=cleanup(),
     io:format("~p~n",[{"Stop cleaup",?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -123,10 +127,58 @@ pass_0()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_1()->
-   
     
+    dbase:dynamic_db_init([]),
+    [{myadd,"1.0.0","https://github.com/joq62/myadd.git",2,[]},
+     {mydivi,"1.0.0","https://github.com/joq62/mydivi.git",1,
+      [controller@c0]}]=db_deployment:read_all(),
+    WantedState=db_deployment:wanted_state(),
+    gl=[check_1(AppInfo)||AppInfo<-WantedState],
     ok.
 
+check_1({App,Replicas,[]})->
+    NumDeployed=lists:flatlength(sd:get(App)),
+    {App,get_diff(Replicas,NumDeployed)};
+check_1({App,Replicas,Hosts})->
+    DeployedNodes=sd:get(App),
+    NumDeployed=lists:flatlength(DeployedNodes),
+   
+    % Cehck if all hosts are deployed
+    NotDeployedHost=[Host||Host<-Hosts,
+			   false=:=lists:member(Host,DeployedNodes)],
+    Result=case NotDeployedHost of
+	       []-> % All are deployed
+		   Diff=lists:flatlength(DeployedNodes)-lists:flatlength(Replicas),
+		   if
+		       Diff==0->
+			   wanted_state;
+		       Diff>0->
+			   {missing_replicas,Diff};
+		       Diff<0 ->
+			   {too_many_replicas,(0-Diff)}
+		   end;
+	       NotDeployedHost->
+		   {missing_hosts,NotDeployedHost}
+	   end,
+    {App,Result}.
+
+
+get_diff(Replicas,NumDeployed)->
+    Diff=Replicas-NumDeployed,
+    State=if
+	      Diff==0->
+		  {ok,Diff};
+	      Diff>0->
+		  {missing_replicas,Diff};
+	      Diff<0 ->
+		  {too_many_replicas,0-Diff}
+	  end,
+    State. 
+    
+
+
+
+    
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
