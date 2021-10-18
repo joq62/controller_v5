@@ -129,26 +129,44 @@ pass_0()->
 pass_1()->
     
     dbase:dynamic_db_init([]),
-    [{myadd,"1.0.0","https://github.com/joq62/myadd.git",2,[]},
+    [{myadd,"1.0.0","https://github.com/joq62/myadd.git",2,
+     [controller@c0,controller@c2]},
      {mydivi,"1.0.0","https://github.com/joq62/mydivi.git",1,
       [controller@c0]}]=db_deployment:read_all(),
-    WantedState=db_deployment:wanted_state(),
-    
-    FormatWantedState1=[format_wanted(AppInfo)||AppInfo<-WantedState],
-    FormatWantedState=lists:append(FormatWantedState1),
-    io:format("FormatWantedState ~p~n",[FormatWantedState]),
-    WantedWithHost=[{App,Host}||{App,Host}<-FormatWantedState],
-    WantedNoHosts=[App||{App}<-FormatWantedState],
-    io:format("WantedWithHost ~p~n",[WantedWithHost]),
-    io:format("WantedNoHosts ~p~n",[WantedNoHosts]),
-    SdAllApps=sd:all(), %[{Node,[{App,Info,Vsn}]}]
-    FormatActualState1=[format_sd(SdAppInfo)||SdAppInfo<-SdAllApps],
-    FormatActualState=lists:append(FormatActualState1),
-    io:format("FormatActualState ~p~n",[FormatActualState]),
-    {[{mydivi,[controller@c0]}],UpdatedActualState}=missing_w_hosts(WantedWithHost,FormatActualState,[]),
-    gl=missing_no_hosts(WantedNoHosts,UpdatedActualState,[]),
-    
+    WantedStateC0=db_deployment:wanted_state('controller@c0'),
+    WantedStateC2=db_deployment:wanted_state('controller@c2'),
+    WantedState=WantedStateC0,
+    [{myadd,"https://github.com/joq62/myadd.git"},
+     {mydivi,"https://github.com/joq62/mydivi.git"}]=WantedStateC0,
+    [{myadd,"https://github.com/joq62/myadd.git"}]=WantedStateC2,
+    X=[start_app(StartInfo)||StartInfo<-lists:append(WantedStateC0,WantedStateC2)],
+    [ok,ok,{error,[already_started,myadd]}]=X,
+	    
     ok.
+
+start_app({App,GitPath})->
+    Result=case [Z||{Z,_,_}<-application:which_applications(),
+		Z=:=App] of
+	       []->
+		   AppDir=atom_to_list(App),
+		   os:cmd("rm -rf "++AppDir),
+		   os:cmd("git clone "++GitPath),
+		   Ebin=filename:join(AppDir,"ebin"),
+		   case code:add_patha(Ebin) of
+		       {error, bad_directory}->
+			   {error, bad_directory};
+		       true->
+			   case application:start(App) of
+			       ok->
+				   ok;
+			       Reason->
+				   {error,Reason}
+			   end
+		   end;
+	       Z->
+		   {error,[already_started,App]}
+	   end,
+    Result.
 
 
 with_hosts([],FormatActualState,MissingAcc)->

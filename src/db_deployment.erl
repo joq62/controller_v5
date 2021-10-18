@@ -64,12 +64,15 @@ add_node(Dest,Source,StorageType)->
 
 
 
-wanted_state()->
+wanted_state(Node)->
     Result=case read_all() of
 	       []->
 		   [];
 	       L ->
-		   [{App,Replicas,Hosts}||{App,_Vsn,_GitPath,Replicas,Hosts}<-L]
+
+		   [{App,GitPath}||{App,_Vsn,GitPath,_Replicas,Hosts}<-L,
+					 true=:=lists:member(Node,Hosts)]
+		   
 	   end,
     Result.
 

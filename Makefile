@@ -1,6 +1,6 @@
 all:
 #	service
-	rm -rf ebin/* *_ebin;
+	rm -rf ebin/* *_ebin myadd mydivi;
 	rm -rf src/*.beam *.beam  test_src/*.beam test_ebin;
 	rm -rf  *~ */*~  erl_cra*;
 	rm -rf *_specs *_config *.log;

@@ -16,8 +16,12 @@
 %% --------------------------------------------------------------------
 % -include("").
 %% --------------------------------------------------------------------
+
+-define(ScheduleInterval,1*10*1000).
+
 %% External exports
 -export([
+	 schedule/0
 	]).
 
 
@@ -36,7 +40,8 @@
 start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 stop()-> gen_server:call(?MODULE, {stop},infinity).
 
-
+schedule()->
+    gen_server:cast(?MODULE, {schedule}).
 
 %% ====================================================================
 %% Server functions
@@ -52,7 +57,8 @@ stop()-> gen_server:call(?MODULE, {stop},infinity).
 %% --------------------------------------------------------------------
 init([]) ->
     rpc:cast(node(),db_logger,create,["log","starting server"," ",{?MODULE,?FUNCTION_NAME,?LINE}]),
-   
+    spawn(fun()->do_schedule() end),
+    
     {ok, #state{}
     }.
 
@@ -66,8 +72,8 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call({fetch_resources},_From, State) ->
-    Reply=ok,
+handle_call({not_implemented},_From, State) ->
+    Reply=not_implemented,
     {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->
@@ -84,6 +90,11 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+
+handle_cast({schedule}, State) ->
+     spawn(fun()->do_schedule() end),
+    {noreply, State};
+
 handle_cast(Msg, State) ->
     io:format("unmatched match cast ~p~n",[{Msg,?MODULE,?LINE,time()}]),
     {noreply, State}.
@@ -117,3 +128,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
+do_schedule()->
+    io:format("do_schedule start~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,time()}]),
+    timer:sleep(?ScheduleInterval),
+    Result=rpc:call(node(),scheduler,start,[],10*1000),
+    io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
+    rpc:cast(node(),controller_server,schedule,[]).
+		  
