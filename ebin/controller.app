@@ -10,7 +10,7 @@
 {mod, {controller,[]}},
 {start_phases, []},
 {git_path,"https://github.com/joq62/controller.git"},
-{env,[{nodes,['controller@c0','controller@c2','controller@joq62-X550CA'
+{env,[{nodes,['controller@c0','controller@c2','controller@c203','controller@203'
 	     ]},
       {dir_applications,"applications"},
       {dir_logs,"logs"},
