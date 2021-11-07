@@ -56,8 +56,7 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    rpc:cast(node(),db_logger,create,["log","starting server"," ",{?MODULE,?FUNCTION_NAME,?LINE}]),
-    spawn(fun()->do_schedule() end),
+    %spawn(fun()->do_schedule() end),
     
     {ok, #state{}
     }.
@@ -132,6 +131,6 @@ do_schedule()->
     io:format("do_schedule start~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     timer:sleep(?ScheduleInterval),
     Result=rpc:call(node(),scheduler,start,[],10*1000),
-    io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
+ %   io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     rpc:cast(node(),controller_server,schedule,[]).
 		  
