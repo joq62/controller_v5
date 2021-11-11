@@ -41,9 +41,9 @@ start()->
     ok=pass_0(),
     io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass_1(),
-    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    ok=pass_1(),
+%    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
  
      %% End application tests
     io:format("~p~n",[{"Start cleanup",?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -62,7 +62,12 @@ start()->
 %% --------------------------------------------------------------------
 pass_0()->
     io:format("~p~n",[application:which_applications()]),
-    LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
+  %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
+    
+    ok=application:start(controller),
+    LoadedServices=controller:loaded(),
+    io:format("LoadedServices=~p~n",[LoadedServices]),
+    
     R=[{application:start(Application),Application}||Application<-LoadedServices],
     
     io:format("~p~n",[R]),

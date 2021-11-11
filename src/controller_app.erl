@@ -1,8 +1,9 @@
 %% Author: uabjle
 %% Created: 10 dec 2012
 %% Description: TODO: Add description to application_org
--module(controller). 
+-module(controller_app). 
 
+-behaviour(application).
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
@@ -11,19 +12,21 @@
 %% Behavioural exports
 %% --------------------------------------------------------------------
 -export([
-	 loaded/0,
-	 boot/0
-	]).
+	 start/2,
+	 stop/1
+        ]).
 
 %% --------------------------------------------------------------------
 %% Internal exports
 %% --------------------------------------------------------------------
--export([start/0,
-	 stop/0]).
+-export([
+	 
+	]).
+
 %% --------------------------------------------------------------------
 %% Macros
 %% --------------------------------------------------------------------
--define(SERVER,controller_server).
+-define(Lock,controller_lock).
 %% --------------------------------------------------------------------
 %% Records
 %% --------------------------------------------------------------------
@@ -43,8 +46,7 @@
 %%          {ok, Pid, State} |
 %%          {error, Reason}
 %% --------------------------------------------------------------------
-boot()->
-    application:start(?SERVER).
+
 
 
 %% --------------------------------------------------------------------
@@ -53,15 +55,37 @@ boot()->
 %%          {ok, Pid, State} |
 %%          {error, Reason}
 %% --------------------------------------------------------------------
-start()-> gen_server:start_link({local, ?SERVER}, ?SERVER, [], []).
-stop()-> gen_server:call(?SERVER, {stop},infinity).
+start(_Type, _StartArgs) ->
+  %  ok=init(),
+    {ok,Pid}= controller_sup:start_link(),
+    {ok,Pid}.
+   
+%% --------------------------------------------------------------------
+%% Func: stop/1
+%% Returns: any
+%% --------------------------------------------------------------------
+stop(_State) ->
+    ok.
 
-
-
-loaded()->
-    gen_server:call(?SERVER, {loaded},infinity).
-    
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+init()->
+    Appfile=atom_to_list(?MODULE)++".app",
+    Env=appfile:read(Appfile,env),
+    {nodes,Nodes}=lists:keyfind(nodes,1,Env),
+    {support_applications,Applications}=lists:keyfind(support_applications,1,Env),
+    
+    [application:set_env(Application,nodes,Nodes)||Application<-Applications],
 
+    %connect
+    RunningNodes=[Node||Node<-lists:delete(node(),Nodes),
+		       pong=:=net_adm:ping(Node)],
+    DbaseNodes=[Node||Node<-RunningNodes,
+		      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
+  %  io:format("node(),DbaseNodes ~p~n",[{node(),DbaseNodes,?FUNCTION_NAME,?MODULE,?LINE}]),
+    ok=dbase:dynamic_db_init(DbaseNodes),
+
+    [application:start(Application)||Application<-Applications],
+    timer:sleep(1000),
+    ok.

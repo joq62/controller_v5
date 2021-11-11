@@ -27,18 +27,17 @@
 
 %% gen_server callbacks
 
--export([start/0,stop/0]).
+
 
 -export([init/1, handle_call/3,handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--record(state, {
+-record(state, {loaded
 	       }).
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
-start()-> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop()-> gen_server:call(?MODULE, {stop},infinity).
+
 
 schedule()->
     gen_server:cast(?MODULE, {schedule}).
@@ -56,11 +55,11 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    ok=lib_controller:clone(service_catalog),
+    LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
     
     %spawn(fun()->do_schedule() end),
     
-    {ok, #state{}
+    {ok, #state{loaded=LoadedServices}
     }.
 
 %% --------------------------------------------------------------------
@@ -73,8 +72,8 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_call({not_implemented},_From, State) ->
-    Reply=not_implemented,
+handle_call({loaded},_From, State) ->
+    Reply=State#state.loaded,
     {reply, Reply, State};
 
 handle_call({stop}, _From, State) ->

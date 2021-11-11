@@ -7,7 +7,7 @@
 	  [controller,controller_sup,controller_server]},
 {registered,[controller]},
 {applications, [kernel,stdlib]},
-{mod, {controller,[]}},
+{mod, {controller_app,[]}},
 {start_phases, []},
 {git_path,"https://github.com/joq62/controller.git"},
 {env,[{service_catalog,[{dir,"service_catalog"},
