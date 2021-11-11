@@ -10,9 +10,7 @@
 {mod, {controller,[]}},
 {start_phases, []},
 {git_path,"https://github.com/joq62/controller.git"},
-{env,[{nodes,['controller@c0','controller@c2','controller@c203','controller@203'
-	     ]},
-      {dir_applications,"applications"},
-      {dir_logs,"logs"},
-      {support_applications,[common,bully]}]}
+{env,[{service_catalog,[{dir,"service_catalog"},
+	                {filename,"service.catalog"},
+			{git_path,"https://github.com/joq62/service_catalog.git"}]}]}
 ]}.

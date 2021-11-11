@@ -60,14 +60,56 @@ start()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
+backup_log_dir()->
+    os:cmd("rm -rf  logs"),
+    file:make_dir("logs"),
+    os:cmd("cp apps/*/log/* logs"),
+    
+    ok.
+
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% --------------------------------------------------------------------
+init_start()->
+    % This is according to normal start on a host
+  %  backup_log_dir(),
+    % git clone ...controller.git
+    ok=application:start(controller),
+    
+    ok.
+
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% --------------------------------------------------------------------
 pass_0()->
-    io:format("~p~n",[application:which_applications()]),
-    LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
-    R=[{application:start(Application),Application}||Application<-LoadedServices],
-    
-    io:format("~p~n",[R]),
-    
-    io:format("~p~n",[application:which_applications()]),
+    [{application,controller,
+     [{description,"Controller application and cluster"},
+      {vsn,"0.1.0"},
+      {modules,[controller,controller_sup,controller_server]},
+      {registered,[controller]},
+      {applications,[kernel,stdlib]},
+      {mod,{controller,[]}},
+      {start_phases,[]},
+      {git_path,"https://github.com/joq62/controller.git"},
+      {env,[{nodes,['controller@c0',
+		    'controller@c2',
+		    'controller@joq62-X550CA'
+		   ]}
+	   ]
+      }
+     ]
+     }
+    ]=appfile:read("controller.app",all),
+    "https://github.com/joq62/controller.git"=appfile:read("controller.app",git_path),
+    [{nodes,['controller@c0',
+	     'controller@c2',
+	     'controller@joq62-X550CA']}]=appfile:read("controller.app",env),
+    {error,[eexists,glurk,read_app_file,appfile,_Line]}=appfile:read("controller.app",glurk),
+    {error,enoent}=appfile:read("glurk.app",git_path),
     ok.
 
 %% --------------------------------------------------------------------

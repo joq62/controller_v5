@@ -56,6 +56,8 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+    ok=lib_controller:clone(service_catalog),
+    
     %spawn(fun()->do_schedule() end),
     
     {ok, #state{}

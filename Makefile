@@ -1,6 +1,6 @@
 all:
 #	service
-	rm -rf ebin/* *_ebin myadd mydivi;
+	rm -rf ebin/* *_ebin myadd mydivi balcony my_services service_catalog;
 	rm -rf src/*.beam *.beam  test_src/*.beam test_ebin;
 	rm -rf  *~ */*~  erl_cra*;
 	rm -rf *_specs *_config *.log;
@@ -20,7 +20,7 @@ unit_test:
 	mkdir test_ebin;
 #	common
 #	cp ../common/src/*.app ebin;
-	erlc -o ebin ../common/src/*.erl;
+	erlc -o ebin ../../common/src/*.erl;
 #	bully
 	cp ../bully_election/src/*.app ebin;
 	erlc -o ebin ../bully_election/src/*.erl;
