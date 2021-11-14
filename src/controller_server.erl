@@ -55,7 +55,8 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
+    LoadedServices=loader:load_services(),
+  %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
     
     %spawn(fun()->do_schedule() end),
     
@@ -132,6 +133,7 @@ do_schedule()->
     io:format("do_schedule start~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     timer:sleep(?ScheduleInterval),
     Result=rpc:call(node(),scheduler,start,[],10*1000),
+    not_implmented=Result,
  %   io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     rpc:cast(node(),controller_server,schedule,[]).
 		  

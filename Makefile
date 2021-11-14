@@ -32,7 +32,6 @@ unit_test:
 	erlc -o test_ebin test_src/*.erl;
 	erl -pa ebin -pa test_ebin\
 	    -setcookie cookie\
-	    -hidden\
 	    -sname test\
 	    -unit_test monitor_node test\
 	    -unit_test cluster_id test\

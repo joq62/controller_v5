@@ -41,9 +41,9 @@ start()->
     ok=pass_0(),
     io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-%    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-%    ok=pass_1(),
-%    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass_1(),
+    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
  
      %% End application tests
     io:format("~p~n",[{"Start cleanup",?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -61,18 +61,18 @@ start()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_0()->
-    io:format("~p~n",[application:which_applications()]),
+    io:format("sd:all 1 ~p~n",[sd:all()]),
   %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
     
     ok=application:start(controller),
     LoadedServices=controller:loaded(),
     io:format("LoadedServices=~p~n",[LoadedServices]),
+    io:format("sd:all 2 ~p~n",[sd:all()]),
+   % R=[{application:start(Application),Application}||Application<-LoadedServices],
     
-    R=[{application:start(Application),Application}||Application<-LoadedServices],
+ %   io:format("~p~n",[R]),
     
-    io:format("~p~n",[R]),
-    
-    io:format("~p~n",[application:which_applications()]),
+    io:format("which applications =~p~n",[application:which_applications()]),    
     ok.
 
 %% --------------------------------------------------------------------
@@ -90,129 +90,82 @@ pass_0()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_1()->
-    
-    dbase:dynamic_db_init([]),
-    [{myadd,"1.0.0","https://github.com/joq62/myadd.git",2,
-     [controller@c0,controller@c2]},
-     {mydivi,"1.0.0","https://github.com/joq62/mydivi.git",1,
-      [controller@c0]}]=db_deployment:read_all(),
-    WantedStateC0=db_deployment:wanted_state('controller@c0'),
-    WantedStateC2=db_deployment:wanted_state('controller@c2'),
-    WantedState=WantedStateC0,
-    [{myadd,"https://github.com/joq62/myadd.git"},
-     {mydivi,"https://github.com/joq62/mydivi.git"}]=WantedStateC0,
-    [{myadd,"https://github.com/joq62/myadd.git"}]=WantedStateC2,
-    X=[start_app(StartInfo)||StartInfo<-lists:append(WantedStateC0,WantedStateC2)],
-    [ok,ok,{error,[already_started,myadd]}]=X,
-	    
+    % test that myadd is not starte on tes
+    {badrpc,{'EXIT',{noproc,{gen_server,call,[myadd,{add,1,2},infinity]}}}}=
+	rpc:call(node(),myadd,add,[1,2]),
+      
+    spawn(fun()->
+		  test_proc() end),
+  
     ok.
-
-start_app({App,GitPath})->
-    Result=case [Z||{Z,_,_}<-application:which_applications(),
-		Z=:=App] of
-	       []->
-		   AppDir=atom_to_list(App),
-		   os:cmd("rm -rf "++AppDir),
-		   os:cmd("git clone "++GitPath),
-		   Ebin=filename:join(AppDir,"ebin"),
-		   case code:add_patha(Ebin) of
-		       {error, bad_directory}->
-			   {error, bad_directory};
-		       true->
-			   case application:start(App) of
-			       ok->
-				   ok;
-			       Reason->
-				   {error,Reason}
-			   end
-		   end;
-	       Z->
-		   {error,[already_started,App]}
-	   end,
-    Result.
-
-
-with_hosts([],FormatActualState,MissingAcc)->
-    {MissingAcc,FormatActualState};
-with_hosts([{App,Host}|T],FormatActualState,MissingAcc)->
-    case lists:member({App,Host},FormatActualState) of
-	true->
-	    NewMissingAcc=MissingAcc,
-	    NewActualAcc=lists:delete({App,Host},FormatActualState);
-	false ->
-	    NewMissingAcc=[{App,Host}|MissingAcc],
-	    NewActualAcc=FormatActualState
+ 
+test_proc()->
+    {ok,Node,AppRef}=allocate(myadd),
+    {error,_}=rpc:call(Node,application,start,[mydivi],1000),
+    42=rpc:call(Node,myadd,add,[20,22],1000),
+    io:format("sd:all 1 ~p~n",[sd:all()]),
+    % 
+    
+    %shutdown_ok=rpc:call(Node,myadd,stop,[],1000),
+    deallocate(Node,myadd),
+    
+    receive
+	{'DOWN',AppRef,process,Pid,normal}->
+	    io:format("X ~p~n",[{'DOWN',AppRef,process,Pid,normal}]);
+	{nodedown,Node}->
+	    io:format("X ~p~n",[{nodedown,Node}])
+    after 2000->
+	    io:format("timeout X ~p~n",[1])
     end,
-    with_hosts(T,NewActualAcc,NewMissingAcc).
-
-format_sd({Node,AppInfoList})->
-    [{App,[Node]}||{App,_,_}<-AppInfoList].
-
-format_wanted({App,Replicas,[]})->
-    format_wanted(Replicas,App,[]);
-format_wanted({App,Replicas,Hosts})->
-    Diff=Replicas-lists:flatlength(Hosts),
-    Result=if
-	       Diff==0-> % onetoone
-		   [{App,[Host]}||Host<-Hosts];
-	       Diff>0-> % more replicas then Hosts
-		   L1=[{App,[Host]}||Host<-Hosts],
-		   L2=format_wanted({App,Diff,[]}),
-		   lists:append([L1,L2]);
-	       Diff<0 ->
-		   {error,[to_few_replicas,Diff]}
-	   end,
-    Result.
-
-format_wanted(0,_App,Result)->
-    Result;
-format_wanted(N,App,Acc)->
-    format_wanted(N-1,App,[{App}|Acc]).
-
+    %
     
-check_1({App,Replicas,[]})->
-    NumDeployed=lists:flatlength(sd:get(App)),
-    {App,get_diff(Replicas,NumDeployed)};
-check_1({App,Replicas,Hosts})->
-    DeployedNodes=sd:get(App),
-    NumDeployed=lists:flatlength(DeployedNodes),
+    receive
+	{'DOWN',AppRef,process,Pid2,normal}->
+	    io:format("Y ~p~n",[{'DOWN',AppRef,process,Pid2,normal}]);
+	{nodedown,Node}->
+	    io:format("Y ~p~n",[{nodedown,Node}])
+    after 2000->
+	    io:format("timeout Y ~p~n",[1])
+    end,
+  %  ok=rpc:call(Node,init,stop,[],1000),
+  %  timer:sleep(10),
+  %  receive
+%	{nodedown,Node}->
+%	    io:format("Y ~p~n",[{nodedown,Node}])
+ %   after 2000->
+%	    io:format("timeout Y ~p~n",[2])
+ %   end,
+    io:format("sd:all 2 ~p~n",[sd:all()]).    
+
+allocate(App)-> % The calling shall monitor and take actions if node or application dies
+    %% Start the needed Node 
+    ServiceFile=atom_to_list(App)++".beam",
+    ServiceFullFileName=code:where_is_file(ServiceFile),
+    ServiceEbinDir=filename:dirname(ServiceFullFileName),
+    Cookie=atom_to_list(erlang:get_cookie()),
+    %% Infra functions needed [sd
+    SdFileName=code:where_is_file("sd.beam"),
+    SdEbinDir=filename:dirname(SdFileName),
+    % start slave 
+    Name =list_to_atom(lists:flatten(io_lib:format("~p",[erlang:system_time()]))),
+    {ok,Host}=net:gethostname(),
+    Args="-pa "++ServiceEbinDir++" "++"-pa "++SdEbinDir++" "++"-setcookie "++Cookie,
+    {ok,Node}=slave:start(Host,Name,Args),
+ %   io:format("Node nodes() ~p~n",[{Node,nodes()}]),
+    true=net_kernel:connect_node(Node),
+    true=erlang:monitor_node(Node,true),
+    
+     %% Start the gen_server and monitor it instead of using superviosur  
+    {ok,PidApp}=rpc:call(Node,App,start,[],5000),
+    AppMonitorRef=erlang:monitor(process,PidApp),
+    {ok,Node,AppMonitorRef}.
+
+deallocate(Node,App)->
+    rpc:call(Node,App,stop,[],2000),
+    rpc:call(Node,init,stop,[],1000),
+    timer:sleep(100),
+    ok.
    
-    % Cehck if all hosts are deployed
-    NotDeployedHost=[Host||Host<-Hosts,
-			   false=:=lists:member(Host,DeployedNodes)],
-    Result=case NotDeployedHost of
-	       []-> % All are deployed
-		   Diff=lists:flatlength(DeployedNodes)-lists:flatlength(Replicas),
-		   if
-		       Diff==0->
-			   wanted_state;
-		       Diff>0->
-			   {missing_replicas,Diff};
-		       Diff<0 ->
-			   {too_many_replicas,(0-Diff)}
-		   end;
-	       NotDeployedHost->
-		   {missing_hosts,NotDeployedHost}
-	   end,
-    {App,Result}.
-
-
-get_diff(Replicas,NumDeployed)->
-    Diff=Replicas-NumDeployed,
-    State=if
-	      Diff==0->
-		  {ok,Diff};
-	      Diff>0->
-		  {missing_replicas,Diff};
-	      Diff<0 ->
-		  {too_many_replicas,0-Diff}
-	  end,
-    State. 
-    
-
-
-
-    
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc

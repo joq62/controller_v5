@@ -67,7 +67,6 @@ load_service(RootDir,{App,_Vsn,GitPath})->
     os:cmd("mv "++SourceDir++" "++DestDir),
     case code:add_patha(filename:join(DestDir,"ebin")) of
 	true->
-	    ok=application:load(App),
 	    {ok,App};
 	Reason->
 	    {error,[Reason,App,DestDir]}

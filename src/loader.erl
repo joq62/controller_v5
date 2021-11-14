@@ -4,7 +4,7 @@
 %%% 
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(lib_controller).   
+-module(loader).   
  
     
 %% --------------------------------------------------------------------
@@ -58,10 +58,10 @@ load_services()->
 %% Description: List of test cases 
 %% Returns: non
 %% --------------------------------------------------------------------
-load_service(RootDir,{App,_Vsn,GitPath})->
+load_service(RootDir,{App,Vsn,GitPath})->
     AppId=atom_to_list(App),
     SourceDir=AppId,
-    DestDir=filename:join(RootDir,AppId),
+    DestDir=filename:join(RootDir,AppId++"-"++Vsn),
     os:cmd("rm -rf "++DestDir),
     os:cmd("git clone "++GitPath),
     os:cmd("mv "++SourceDir++" "++DestDir),
