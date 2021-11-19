@@ -55,12 +55,8 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    LoadedServices=loader:load_services(),
-  %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
     
-    %spawn(fun()->do_schedule() end),
-    
-    {ok, #state{loaded=LoadedServices}
+    {ok, #state{}
     }.
 
 %% --------------------------------------------------------------------
