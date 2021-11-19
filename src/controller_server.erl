@@ -73,6 +73,11 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_call({allocate,App},_From, State) ->
+    Reply=loader:allocate(App),
+    {reply, Reply, State};
+
+
 handle_call({loaded},_From, State) ->
     Reply=State#state.loaded,
     {reply, Reply, State};
@@ -91,6 +96,9 @@ handle_call(Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast({deallocate,Node,App}, State) ->
+    Reply=loader:deallocate(Node,App),
+    {noreply, State};
 
 handle_cast({schedule}, State) ->
      spawn(fun()->do_schedule() end),
@@ -107,7 +115,8 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+    io:format("unmatched match~p~n",[{Info,?MODULE,?LINE}]), 
     {noreply, State}.
 
 %% --------------------------------------------------------------------

@@ -41,9 +41,9 @@ start()->
     ok=pass_0(),
     io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass_1(),
-    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   ok=pass_1(),
+ %   io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
  
      %% End application tests
     io:format("~p~n",[{"Start cleanup",?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -62,8 +62,7 @@ start()->
 %% --------------------------------------------------------------------
 pass_0()->
     io:format("sd:all 1 ~p~n",[sd:all()]),
-  %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],
-    
+  %  LoadedServices=[Service||{ok,Service}<-lib_controller:load_services()],    
     ok=application:start(controller),
     LoadedServices=controller:loaded(),
     io:format("LoadedServices=~p~n",[LoadedServices]),
@@ -71,7 +70,7 @@ pass_0()->
    % R=[{application:start(Application),Application}||Application<-LoadedServices],
     
  %   io:format("~p~n",[R]),
-    
+    spawn(fun()->server_sim() end),
     io:format("which applications =~p~n",[application:which_applications()]),    
     ok.
 
@@ -80,8 +79,37 @@ pass_0()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
+server_sim()->
+    {ok,Node,AppPid}=loader:allocate(myadd),
+    io:format("Node,AppPid = ~p~n",[{Node,AppPid}]),
+    true=erlang:monitor_node(Node,true),
+    erlang:monitor(process,AppPid),
+    loop(Node,AppPid,5).
 
-
+loop(_,_,0)->
+    io:format("loop stopped ~n");
+loop(Node,AppPid,N)->
+    AppPid!{self(),add,[20,22+N]},
+    receive
+	{AppPid,{ok,R}}->
+	    io:format("R = ~p~n",[R]),
+	    timer:sleep(1000);
+	X->
+	    io:format("X = ~p~n",[X])
+    after 1000 ->
+	    io:format("timeout ~n")
+    end,
+    if
+	N=:=3->
+	    AppPid!{stop},
+	    %true=erlang:exit(AppPid,stopped),
+	    timer:sleep(100);
+	N=:=2->
+	    rpc:call(Node,init,stop,[]);
+	true ->
+	    ok
+    end,
+    loop(Node,AppPid,N-1).
 
 
 %% --------------------------------------------------------------------

@@ -12,6 +12,8 @@
 %% --------------------------------------------------------------------
 -export([
 	 loaded/0,
+	 allocate/1,
+	 deallocate/2,
 	 boot/0
 	]).
 
@@ -60,7 +62,12 @@ stop()-> gen_server:call(?SERVER, {stop},infinity).
 
 loaded()->
     gen_server:call(?SERVER, {loaded},infinity).
-    
+
+allocate(App)->
+    gen_server:call(?SERVER, {allocate,App},infinity).
+
+deallocate(Node,App)->
+    gen_server:cast(?SERVER, {deallocate,Node,App}).    
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
