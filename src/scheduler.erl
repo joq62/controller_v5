@@ -32,7 +32,7 @@
 %% Returns: non
 %% --------------------------------------------------------------------
 start()->
-    WantedState=db_deployment:wanted_state(node()),
+    WantedState=db_deployment:glurk(),
     StartResult=[start_app(StartInfo)||StartInfo<-WantedState],
     StartResult.
 %% --------------------------------------------------------------------

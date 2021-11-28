@@ -34,7 +34,6 @@ dynamic_db_init([])->
     mnesia:start(),
     %% First to start
     ok=db_deployment:init(),
-    ok=db_logger:create_table(), 
     ok;
 
 dynamic_db_init([DbaseNode|T])->
@@ -50,8 +49,7 @@ dynamic_db_init([DbaseNode|T])->
 	{ok,[Added]}->
 	    mnesia:add_table_copy(schema, Added,StorageType),
 	    % Application db_xx
-	    db_logger:add_table(Added,StorageType),
-	    db_lock:add_table(Added,StorageType),
+	    db_deployment:add_table(Added,StorageType),
 	    Tables=mnesia:system_info(tables),
 	    mnesia:wait_for_tables(Tables,20*1000);
 	Reason ->

@@ -31,7 +31,8 @@
 
 -export([init/1, handle_call/3,handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--record(state, {loaded
+-record(state, {loaded,
+		spec_list
 	       }).
 
 %% ====================================================================
@@ -55,9 +56,24 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+  
+    case bully:am_i_leader(node()) of
+	false->
+	    ok;
+	true->
+	    %Dbase init 
+	    ControllerNodes=[Node||{_Host,Node}<-config_kublet:which_hosts_shall_controller_contact()],
+	    RunningNodes=[Node||Node<-lists:delete(node(),ControllerNodes),
+				pong=:=net_adm:ping(Node)],
+	    DbaseNodes=[Node||Node<-RunningNodes,
+			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
+						%  io:format("node(),DbaseNodes ~p~n",[{node(),DbaseNodes,?FUNCTION_NAME,?MODULE,?LINE}]),
+	    ok=dbase:dynamic_db_init(DbaseNodes),
+	    spawn(fun()->do_schedule() end),
+	    ok
+    end,
     
-    {ok, #state{}
-    }.
+    {ok, #state{}}.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -93,7 +109,7 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast({deallocate,Node,App}, State) ->
-    Reply=loader:deallocate(Node,App),
+    loader:deallocate(Node,App),
     {noreply, State};
 
 handle_cast({schedule}, State) ->
@@ -101,7 +117,7 @@ handle_cast({schedule}, State) ->
     {noreply, State};
 
 handle_cast(Msg, State) ->
-    io:format("unmatched match cast ~p~n",[{Msg,?MODULE,?LINE,time()}]),
+    io:format("unmatched match cast ~p~n",[{Msg,?MODULE,?LINE}]),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -137,8 +153,8 @@ code_change(_OldVsn, State, _Extra) ->
 do_schedule()->
     io:format("do_schedule start~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     timer:sleep(?ScheduleInterval),
-    Result=rpc:call(node(),scheduler,start,[],10*1000),
-    not_implmented=Result,
+ %   Result=rpc:call(node(),scheduler,start,[],10*1000),
+ %   not_implmented=Result,
  %   io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
     rpc:cast(node(),controller_server,schedule,[]).
 		  

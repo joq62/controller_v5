@@ -9,11 +9,8 @@
 -define(RECORD,deployment).
 -record(deployment,
 	{
-	 app,
-	 vsn,
-	 git_path,
-	 replicas,
-	 hosts
+	 name,
+	 info
 	}).
 
 create_table()->
@@ -22,14 +19,11 @@ create_table()->
 delete_table_copy(Dest)->
     mnesia:del_table_copy(?TABLE,Dest).
 
-create(App,Vsn,GitPath,Replicas,Hosts) ->
+create(Name,Info) ->
     F = fun() ->
 		Record=#?RECORD{
-				app=App,
-				vsn=Vsn,
-				git_path=GitPath,
-				replicas=Replicas,
-				hosts=Hosts
+				name=Name,
+				info=Info
 			       },		
 		mnesia:write(Record) end,
     mnesia:transaction(F).
@@ -63,38 +57,25 @@ add_node(Dest,Source,StorageType)->
     Result.
 
 
-
-wanted_state(Node)->
-    Result=case read_all() of
-	       []->
-		   [];
-	       L ->
-
-		   [{App,GitPath}||{App,_Vsn,GitPath,_Replicas,Hosts}<-L,
-					 true=:=lists:member(Node,Hosts)]
-		   
-	   end,
-    Result.
-
-
 read_all() ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE)])),
     Result=case Z of
 	       {aborted,Reason}->
 		   {aborted,Reason};
 	       _->
-		   [{App,Vsn,GitPath,Replicas,Hosts}||{?RECORD,App,Vsn,GitPath,Replicas,Hosts}<-Z]
+		   [{Name,Info}||{?RECORD,Name,Info}<-Z]
 	   end,
     Result.
 
 read(Object) ->
     Z=do(qlc:q([X || X <- mnesia:table(?TABLE),
-		   X#?RECORD.app==Object])),
+		   X#?RECORD.name==Object])),
     Result=case Z of
 	       {aborted,Reason}->
 		   {aborted,Reason};
 	       _->
-		   [{App,Vsn,GitPath,Replicas,Hosts}||{?RECORD,App,Vsn,GitPath,Replicas,Hosts}<-Z]
+		   [R]=[Info||{?RECORD,_Name,Info}<-Z],
+		   R
 	   end,
     Result.
 
@@ -102,7 +83,7 @@ delete(Object) ->
 
     F = fun() -> 
 		RecordList=[X||X<-mnesia:read({?TABLE,Object}),
-			    X#?RECORD.app==Object],
+			    X#?RECORD.name==Object],
 		case RecordList of
 		    []->
 			mnesia:abort(?TABLE);
@@ -126,14 +107,16 @@ do(Q) ->
 
 %%-------------------------------------------------------------------------
 %%-------------------------------------------------------------------------
--define(DeploymentSpecDirName,"dep_spec").
--define(DeploymentSpecPath,"https://github.com/joq62/dep_spec.git").
+-define(DeploymentSpecDirName,"deployments").
+-define(DeploymentSpecPath,"https://github.com/joq62/deployments.git").
+
+
 init()->
     os:cmd("rm -rf "++?DeploymentSpecDirName),
     os:cmd("git clone "++?DeploymentSpecPath),
     {ok,FileNames}=file:list_dir(?DeploymentSpecDirName),
     DeploymentFileNames=[filename:join([?DeploymentSpecDirName,FileName])||FileName<-FileNames,
-								 ".app_spec"==filename:extension(FileName)],
+								 ".deployment"==filename:extension(FileName)],
     
     
     InfoList=[file:consult(DeploymemntFileName)||DeploymemntFileName<-DeploymentFileNames],
@@ -160,6 +143,6 @@ init_deployment_spec([{ok,Info}|T],Acc)->
 do_create([],Result)->
     Result;
 do_create([Record|T],Acc)->
-    [{app,App},{vsn,Vsn},{git_path,GitPath},{replicas,Replicas},{hosts,Hosts}]=Record,
-    R=create(App,Vsn,GitPath,Replicas,Hosts), 
+    {Name,Info}=Record,
+    R=create(Name,Info), 
     do_create(T,[{R,Record}|Acc]).

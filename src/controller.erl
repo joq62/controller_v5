@@ -11,6 +11,9 @@
 %% Behavioural exports
 %% --------------------------------------------------------------------
 -export([
+	 spec_list/0,
+	 status/0,
+
 	 loaded/0,
 	 allocate/1,
 	 deallocate/2,
@@ -63,11 +66,18 @@ stop()-> gen_server:call(?SERVER, {stop},infinity).
 loaded()->
     gen_server:call(?SERVER, {loaded},infinity).
 
+spec_list()->
+    gen_server:call(?SERVER, {spec_list},infinity).
+
+status()->
+    gen_server:call(?SERVER, {status},infinity).
+
 allocate(App)->
     gen_server:call(?SERVER, {allocate,App},infinity).
 
 deallocate(Node,App)->
     gen_server:cast(?SERVER, {deallocate,Node,App}).    
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
