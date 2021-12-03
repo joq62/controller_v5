@@ -59,7 +59,8 @@ init([]) ->
     RunningNodes=lists:delete(node(),[Node||{Node,true}<-connect:start()]),
     %----- Init Dbase
     ok=application:start(dbase_infra),
-    
+    %----- SD
+     ok=application:start(sd),
     %----- Init bully
     ControllerNodes=connect:get(),
     application:set_env([{bully,[{nodes,ControllerNodes}]}]),
@@ -94,6 +95,8 @@ init([]) ->
 	true->
 	    act_leader
     end,
+    ok=application:start(host),
+    
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
