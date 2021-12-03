@@ -18,7 +18,7 @@
 %% --------------------------------------------------------------------
 
 -define(ScheduleInterval,1*10*1000).
-
+-define(ConfigDir,"configurations/host_configuration").
 %% External exports
 -export([
 	 schedule/0
@@ -56,23 +56,44 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+    RunningNodes=lists:delete(node(),[Node||{Node,true}<-connect:start()]),
+    %----- Init Dbase
+    ok=application:start(dbase_infra),
+    
+    %----- Init bully
+    ControllerNodes=connect:get(),
+    application:set_env([{bully,[{nodes,ControllerNodes}]}]),
+    ok=application:start(bully),
+    timer:sleep(1000),
+    %%--    
   
-    case bully:am_i_leader(node()) of
-	false->
-	    ok;
-	true->
-	    %Dbase init 
-	    ControllerNodes=[Node||{_Host,Node}<-config_kublet:which_hosts_shall_controller_contact()],
-	    RunningNodes=[Node||Node<-lists:delete(node(),ControllerNodes),
-				pong=:=net_adm:ping(Node)],
-	    DbaseNodes=[Node||Node<-RunningNodes,
+    
+    NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
-						%  io:format("node(),DbaseNodes ~p~n",[{node(),DbaseNodes,?FUNCTION_NAME,?MODULE,?LINE}]),
-	    ok=dbase:dynamic_db_init(DbaseNodes),
-	    spawn(fun()->do_schedule() end),
+    io:format("NodesMnesiaStarted ~p~n",[{NodesMnesiaStarted,?MODULE,?FUNCTION_NAME,?LINE}]),
+    case NodesMnesiaStarted of
+	[]-> % initial start
+	    LoadResult=[R||R<-rpc:call(node(),dbase_infra,load_from_file,[db_host,?ConfigDir],5*1000),
+			   R/={atomic,ok}],
+	    case LoadResult of
+		[]-> %ok
+		    ok;
+		Reason ->
+		    {error,[Reason]}
+	    end;
+	[Node0|_]->
+	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
+	    timer:sleep(500),
+		    ok=rpc:call(node(),dbase_infra,dynamic_load_table,[node(),db_host],3*1000),
+	    timer:sleep(500),
 	    ok
     end,
-    
+    case bully:am_i_leader(node()) of
+	false->
+	    act_follower;
+	true->
+	    act_leader
+    end,
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
