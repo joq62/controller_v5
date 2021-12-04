@@ -14,14 +14,11 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
-% -include("").
+-include("controller.hrl").
 %% --------------------------------------------------------------------
 
--define(ScheduleInterval,1*10*1000).
--define(ConfigDir,"configurations/host_configuration").
 %% External exports
 -export([
-	 schedule/0
 	]).
 
 
@@ -56,47 +53,19 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    RunningNodes=lists:delete(node(),[Node||{Node,true}<-connect:start()]),
-    %----- Init Dbase
-    ok=application:start(dbase_infra),
-    %----- SD
-     ok=application:start(sd),
-    %----- Init bully
-    ControllerNodes=connect:get(),
-    application:set_env([{bully,[{nodes,ControllerNodes}]}]),
-    ok=application:start(bully),
-    timer:sleep(1000),
-    %%--    
-  
+
+    ok=lib_controller:connect(),
+    ok=lib_controller:start_needed_apps(),
+    ok=lib_controller:initiate_dbase(),
     
-    NodesMnesiaStarted=[Node||Node<-RunningNodes,
-			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
-    io:format("NodesMnesiaStarted ~p~n",[{NodesMnesiaStarted,?MODULE,?FUNCTION_NAME,?LINE}]),
-    case NodesMnesiaStarted of
-	[]-> % initial start
-	    LoadResult=[R||R<-rpc:call(node(),dbase_infra,load_from_file,[db_host,?ConfigDir],5*1000),
-			   R/={atomic,ok}],
-	    case LoadResult of
-		[]-> %ok
-		    ok;
-		Reason ->
-		    {error,[Reason]}
-	    end;
-	[Node0|_]->
-	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
-	    timer:sleep(500),
-		    ok=rpc:call(node(),dbase_infra,dynamic_load_table,[node(),db_host],3*1000),
-	    timer:sleep(500),
-	    ok
-    end,
     case bully:am_i_leader(node()) of
 	false->
 	    act_follower;
 	true->
-	    act_leader
+	    host:desired_state(self())
     end,
-    ok=application:start(host),
-    
+    S=self(),
+    spawn(fun()->call_desired_state(S) end),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -136,8 +105,10 @@ handle_cast({deallocate,Node,App}, State) ->
     loader:deallocate(Node,App),
     {noreply, State};
 
-handle_cast({schedule}, State) ->
-     spawn(fun()->do_schedule() end),
+handle_cast({desired_state}, State) ->
+    S=self(),
+   %  io:format("~p~n",[{time(),S,node(),bully:am_i_leader(node()),?MODULE,?FUNCTION_NAME,?LINE}]),
+    spawn(fun()->call_desired_state(S) end),
     {noreply, State};
 
 handle_cast(Msg, State) ->
@@ -151,8 +122,13 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_info({Id, desired_state_ret,ResultList}, State) ->
+    io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,
+		      Id,desired_state_ret,ResultList}]), 
+    {noreply, State};
+
 handle_info(Info, State) ->
-    io:format("unmatched match~p~n",[{Info,?MODULE,?LINE}]), 
+    io:format("unmatched handle_info ~p~n",[{Info,?MODULE,?LINE}]), 
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -174,11 +150,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
-do_schedule()->
-    io:format("do_schedule start~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,time()}]),
+call_desired_state(MyPid)->
+  %  io:format("~p~n",[{time(),node(),MyPid,bully:am_i_leader(node()),?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=host:desired_state(MyPid),	      
+   % io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,R}]),
     timer:sleep(?ScheduleInterval),
- %   Result=rpc:call(node(),scheduler,start,[],10*1000),
+    Result=rpc:call(node(),controller_desired_state,start,[],10*1000),
  %   not_implmented=Result,
- %   io:format("~p~n",[{Result,?MODULE,?FUNCTION_NAME,?LINE,time()}]),
-    rpc:cast(node(),controller_server,schedule,[]).
+%    io:format("~p~n",[{time(),node(),MyPid,Result,?MODULE,?FUNCTION_NAME,?LINE}]),
+    rpc:cast(node(),controller,desired_state,[]).
 		  

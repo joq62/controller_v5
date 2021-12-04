@@ -13,7 +13,7 @@
 -export([
 	 spec_list/0,
 	 status/0,
-
+	 desired_state/0,
 	 loaded/0,
 	 allocate/1,
 	 deallocate/2,
@@ -62,6 +62,9 @@ start()-> gen_server:start_link({local, ?SERVER}, ?SERVER, [], []).
 stop()-> gen_server:call(?SERVER, {stop},infinity).
 
 
+
+desired_state()->
+    gen_server:cast(?SERVER, {desired_state}).
 
 loaded()->
     gen_server:call(?SERVER, {loaded},infinity).

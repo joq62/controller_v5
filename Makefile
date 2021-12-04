@@ -1,35 +1,53 @@
 all:
 #	service
-	rm -rf ebin/* *_ebin myadd mydivi balcony my_services service_catalog;
-	rm -rf src/*.beam *.beam  test_src/*.beam test_ebin;
+	rm -rf ebin/* src/*.beam *.beam test_src/*.beam test_ebin;
+	rm -rf *.applications ~/*.applications;
 	rm -rf  *~ */*~  erl_cra*;
-	rm -rf *_specs *_config *.log;
 #	common
 #	cp ../common/src/*.app ebin;
-	erlc -o ebin ../../common/src/*.erl;
+	erlc -I include -o ebin ../../common/src/*.erl;
 #	bully
-#	cp ../bully_election/src/*.app ebin;
-#	erlc -o ebin ../bully_election/src/*.erl;
+	cp ../bully/src/*.app ebin;
+	erlc -I include -o ebin ../bully/src/*.erl;
+#	sd
+	cp ../sd/src/*.app ebin;
+	erlc -I include -o ebin ../sd/src/*.erl;
+#	dbase_infra
+	cp ../dbase_infra/src/*.app ebin;
+	erlc -I include -o ebin ../dbase_infra/src/*.erl;
+#	host
+	cp ../host/src/*.app ebin;
+	erlc -I include -o ebin ../host/src/*.erl;
 #	app
 	cp src/*.app ebin;
-	erlc -o ebin src/*.erl;
+	erlc -I include -o ebin src/*.erl;
 	echo Done
 unit_test:
 	rm -rf ebin/* src/*.beam *.beam test_src/*.beam test_ebin;
+	rm -rf *.applications ~/*.applications;
 	rm -rf  *~ */*~  erl_cra*;
 	mkdir test_ebin;
 #	common
 #	cp ../common/src/*.app ebin;
-	erlc -o ebin ../../common/src/*.erl;
+	erlc -D unit_test -I include -o ebin ../../common/src/*.erl;
 #	bully
-	cp ../bully_election/src/*.app ebin;
-	erlc -o ebin ../bully_election/src/*.erl;
+	cp ../bully/src/*.app ebin;
+	erlc -D unit_test -I include -o ebin ../bully/src/*.erl;
+#	sd
+	cp ../sd/src/*.app ebin;
+	erlc -D unit_test -I include -o ebin ../sd/src/*.erl;
+#	dbase_infra
+	cp ../dbase_infra/src/*.app ebin;
+	erlc -D unit_test -I include -o ebin ../dbase_infra/src/*.erl;
+#	host
+	cp ../host/src/*.app ebin;
+	erlc -D unit_test -I include -o ebin ../host/src/*.erl;
 #	app
 	cp src/*.app ebin;
-	erlc -o ebin src/*.erl;
+	erlc -I include -D unit_test -o ebin src/*.erl;
 #	test application
 	cp test_src/*.app test_ebin;
-	erlc -o test_ebin test_src/*.erl;
+	erlc -D unit_test -I include -o test_ebin test_src/*.erl;
 	erl -pa ebin -pa test_ebin\
 	    -setcookie cookie\
 	    -sname test\
