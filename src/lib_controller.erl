@@ -58,11 +58,10 @@ start_needed_apps()->
 %% Returns: non
 %% --------------------------------------------------------------------
 initiate_dbase()->
-    RunningNodes=connect:start(?ControllerNodes),
-    
+    RunningNodes=lists:delete(node(),connect:start(?ControllerNodes)),
     NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
-  %  io:format("NodesMnesiaStarted ~p~n",[{NodesMnesiaStarted,?MODULE,?FUNCTION_NAME,?LINE}]),
+   % io:format("NodesMnesiaStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),NodesMnesiaStarted}]),
     DbaseServices=[{db_host,?HostConfiguration},
 		   {db_service_catalog,?ServiceCatalog},
 		   {db_deployment,?Deployments}],
@@ -75,6 +74,7 @@ initiate_dbase()->
 		    {error,ReasonList}
 	    end;
 	[Node0|_]->
+%	    io:format("Node0 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Node0}]),
 	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
 	    timer:sleep(500),
 	    _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseServices],

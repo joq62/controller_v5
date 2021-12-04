@@ -55,7 +55,8 @@
 %%---------------------------------------------------------------------
 start(File)->
     {ok,[Nodes]}=file:consult(File),
-    [{Node,net_kernel:connect_node(Node)}||Node<-Nodes].
+    [Node||Node<-Nodes,
+	   true=:=net_kernel:connect_node(Node)].
    
  %% --------------------------------------------------------------------
 %% Func: start/2
