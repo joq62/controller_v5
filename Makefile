@@ -1,7 +1,7 @@
 all:
 #	service
 	rm -rf ebin/* src/*.beam *.beam test_src/*.beam test_ebin;
-	rm -rf *.applications ~/*.applications;
+	rm -rf *.applications ~/*.applications *configurations;
 	rm -rf  *~ */*~  erl_cra*;
 #	common
 #	cp ../common/src/*.app ebin;
