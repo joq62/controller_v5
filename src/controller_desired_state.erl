@@ -31,11 +31,15 @@ start()->
 				node()/=db_host:node(Id),
 				false=:=lists:member(db_host:node(Id),sd:get(controller))],
     
-    
-    
-    R=load_start(ControllerHostsToStart),
+    HostToStart=case ControllerHostsToStart of
+		    []->
+			[];
+		    [Node|_]->
+			[Node]
+		end,
+    R=load_start(HostToStart),
     io:format("~p~n",[{time(),node(),bully:who_is_leader(),?MODULE,?FUNCTION_NAME,?LINE,host:host_status()}]),
-    io:format("ControllerHostsToStart,R ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,ControllerHostsToStart,R}]),
+    io:format("ControllerHostsToStart,R ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,HostToStart,R}]),
     ok.
 
 load_start(ControllerHostsToStart)->

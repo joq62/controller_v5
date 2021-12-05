@@ -44,7 +44,7 @@ unit_test:
 	erlc -D unit_test -I include -o ebin ../host/src/*.erl;
 #	app
 	cp src/*.app ebin;
-	erlc -I include -D unit_test -o ebin src/*.erl;
+	erlc -I include -D unit_test -o ebin src/*.erl; 
 #	test application
 	cp test_src/*.app test_ebin;
 	erlc -D unit_test -I include -o test_ebin test_src/*.erl;
