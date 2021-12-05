@@ -25,9 +25,12 @@ start()->
     io:format("************************** ~p~n",[{time(),node(),"*************************************"}]),
 
     io:format("~p~n",[{time(),node(),bully:who_is_leader(),?MODULE,?FUNCTION_NAME,?LINE,host:host_status()}]),
+    
     ControllerHostsToStart=[Id||{Id,node_started}<-host:host_status(),
 				auto_erl_controller=:=db_host:type(Id),
-				node()/=db_host:node(Id)],
+				node()/=db_host:node(Id),
+				false=:=lists:member(db_host:node(Id),sd:get(controller))],
+    
     
     
     R=load_start(ControllerHostsToStart),
