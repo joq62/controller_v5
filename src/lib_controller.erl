@@ -16,6 +16,7 @@
 
 %% External exports
 -export([
+	 load_configs/0,
 	 connect/0,
 	 start_needed_apps/0,
 	 initiate_dbase/0,
@@ -27,7 +28,19 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
-
+load_configs()->
+    {TestDir,TestPath}=?TestConfig,
+    {Dir,Path}=?Config,
+    os:cmd("rm -rf "++TestDir),
+    os:cmd("rm -rf "++Dir),
+    os:cmd("git clone "++TestPath),
+    os:cmd("git clone "++Path),
+    ok.
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% -------------------------------------------------------------------
 %% --------------------------------------------------------------------
 %% Function:start
 %% Description: List of test cases 

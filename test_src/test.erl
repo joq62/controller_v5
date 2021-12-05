@@ -33,8 +33,8 @@ start()->
 
 
  %  io:format("~p~n",[{"Start dbase_test()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=dbase_test(),
-    io:format("~p~n",[{"Stop dbase_test()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    ok=dbase_test(),
+ %   io:format("~p~n",[{"Stop dbase_test()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
   % io:format("~p~n",[{"Start controller_test()",?MODULE,?FUNCTION_NAME,?LINE}]),
     ok= controller_test(),

@@ -24,13 +24,31 @@
 start()->
     io:format("************************** ~p~n",[{time(),node(),"*************************************"}]),
 
-
-    ControllerHostsToStart=[Id||{Id,host_started}<-host:host_status(),
-				auto_erl_controller=:=db_host:type(Id)],
-    
     io:format("~p~n",[{time(),node(),bully:who_is_leader(),?MODULE,?FUNCTION_NAME,?LINE,host:host_status()}]),
-    io:format("ControllerHostsToStart ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,ControllerHostsToStart}]),
+    ControllerHostsToStart=[Id||{Id,node_started}<-host:host_status(),
+				auto_erl_controller=:=db_host:type(Id),
+				node()/=db_host:node(Id)],
+    
+    
+    R=load_start(ControllerHostsToStart),
+    io:format("~p~n",[{time(),node(),bully:who_is_leader(),?MODULE,?FUNCTION_NAME,?LINE,host:host_status()}]),
+    io:format("ControllerHostsToStart,R ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,ControllerHostsToStart,R}]),
     ok.
+
+load_start(ControllerHostsToStart)->
+    load_start(ControllerHostsToStart,[]).
+
+load_start([],StartResult)->
+    StartResult;
+load_start([HostId|T],Acc)->
+    io:format("HostId ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,HostId}]),
+    AppId={controller,"0.1.0"},
+    R=loader:load_start(AppId,HostId),
+    io:format("R ~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,R}]),
+    timer:sleep(2000),
+    load_start(T,[R|Acc]).
+    
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc

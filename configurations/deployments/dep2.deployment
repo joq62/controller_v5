@@ -2,4 +2,5 @@
 %% Information about a specific deployment
 %
 %%------------------------ applications  ----------------------
-{dep2 ,[{myadd,"1.0.0",1,["C201"]}]}.
+{name,dep2}.
+{info,[{myadd,"1.0.0",1,["c100"]}]}.

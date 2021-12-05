@@ -53,7 +53,7 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-
+    ok=lib_controller:load_configs(),
     ok=lib_controller:connect(),
     ok=lib_controller:start_needed_apps(),
     ok=lib_controller:initiate_dbase(),
@@ -155,7 +155,7 @@ call_desired_state(MyPid)->
     ok=host:desired_state(MyPid),	      
    % io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,R}]),
     timer:sleep(?ScheduleInterval),
-    Result=rpc:call(node(),controller_desired_state,start,[],10*1000),
+    Result=rpc:call(node(),controller_desired_state,start,[],1*60*1000),
  %   not_implmented=Result,
 %    io:format("~p~n",[{time(),node(),MyPid,Result,?MODULE,?FUNCTION_NAME,?LINE}]),
     rpc:cast(node(),controller,desired_state,[]).

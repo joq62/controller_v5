@@ -2,6 +2,8 @@
 %% Information about a specific deployment
 %
 %%------------------------ applications  ----------------------
-{dep1 ,[{myamath,"1.0.0",1,["C200"]},
+{name,dep1}.
+{info,[{myamath,"1.0.0",1,["C100"]},
 	     	   {myadd,"1.0.0",2,[]},
-	     	   {mydivi,"1.0.0",2,[]}]}.
+	     	   {mydivi,"1.0.0",2,[]}]
+}.

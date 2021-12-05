@@ -31,13 +31,16 @@ start()->
     ok=setup(),
   %  io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
+%    io:format("~p~n",[{"Start single()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=single(),
+    io:format("~p~n",[{"Stop single()",?MODULE,?FUNCTION_NAME,?LINE}]),
 %    io:format("~p~n",[{"Start initial()()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=initial(),
-    io:format("~p~n",[{"Stop initial()()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    ok=initial(),
+%    io:format("~p~n",[{"Stop initial()()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
  %   io:format("~p~n",[{"Start restart_node()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=restart_node(),
-    io:format("~p~n",[{"Stop restart_node()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    ok=restart_node(),
+ %   io:format("~p~n",[{"Stop restart_node()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
  %   io:format("~p~n",[{"Start node_status()",?MODULE,?FUNCTION_NAME,?LINE}]),
  %   ok=node_status(),
@@ -73,20 +76,11 @@ start()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% -------------------------------------------------------------------
--define(ConfigDir,"test_configurations/host_configuration").
-
-initial()->
-    [ok,ok,ok]=[rpc:call(Node,application,start,[controller],5*1000)||Node<-get_nodes()],
-    timer:sleep(200),
-    [io:format("~p~n",[{Node,rpc:call(Node,mnesia,system_info,[tables],2*1000)}])||Node<-get_nodes()],
-    %%----- load initial node
- %   [Node0|_]=get_nodes(),
- %   [{atomic,ok},{atomic,ok},{atomic,ok}]=rpc:call(Node0,dbase_infra,load_from_file,[db_host,?ConfigDir],5*1000),
+single()->
+    [Node0,_Node1,_Node2]=get_nodes(),
+    ok=rpc:call(Node0,application,start,[controller],10*1000),
     
-   [{host0@c100,host1@c100},
-    {host1@c100,host1@c100},
-    {host2@c100,host1@c100}]=[{Node,rpc:call(Node,db_host,node,[{"c100","host1"}],5*1000)}||Node<-get_nodes()],
-    
+      
     
     ok.
     
@@ -198,10 +192,10 @@ setup()->
     Node1=list_to_atom(B),
     C="host2@"++HostId,
     Node2=list_to_atom(C),    
-    [{ok,Node0},
-     {ok,Node1},
-     {ok,Node2}]=[start_slave(NodeName)||NodeName<-["host0","host1","host2"]],
-  
+ %   [{ok,Node0},
+  %   {ok,Node1},
+   %  {ok,Node2}]=[start_slave(NodeName)||NodeName<-["host0","host1","host2"]],
+    {ok,Node0}=start_slave("host0"),
     ok.
 
 %% --------------------------------------------------------------------
