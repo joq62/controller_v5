@@ -66,9 +66,16 @@ load_start(AppId,HostId)->
     WhereIsFile=rpc:call(Node,code,where_is_file,[AppDir++".app"],5*1000),
     io:format("WhereIsFile ~p~n",[{node(),?MODULE,?FUNCTION_NAME,?LINE,
 				   WhereIsFile}]),
-    Xok=rpc:call(Node,application,start,[App],15*1000),
-    io:format("appstart ~p~n",[{node(),?MODULE,?FUNCTION_NAME,?LINE,
-			      Xok}]),
+    case  rpc:call(Node,application,start,[App],15*1000) of
+	ok->
+	    io:format("appstart ~p~n",[{node(),?MODULE,?FUNCTION_NAME,?LINE,
+			      ok}]),
+	    db_host:update_status(HostId,active);
+	Reason->
+	      io:format("appstart ~p~n",[{node(),?MODULE,?FUNCTION_NAME,?LINE,
+			      error,Reason}])
+    end,
+   
     {ok,App,Node}.
     
 
