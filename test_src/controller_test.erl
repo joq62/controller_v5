@@ -147,6 +147,7 @@ start_slave(NodeName)->
 setup()->
     Nodes=[host@c200,host@c201,host@c202,host@c100],
     [rpc:call(Node,init,stop,[],100)||Node<-Nodes],
+    timer:sleep(2000),
     HostId=net_adm:localhost(),
     {ok,NodeC100}=start_slave("host"),
     
