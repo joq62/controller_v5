@@ -75,9 +75,8 @@ initiate_dbase()->
     NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
    % io:format("NodesMnesiaStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),NodesMnesiaStarted}]),
-    DbaseServices=[{db_host,?HostConfiguration},
-		   {db_service_catalog,?ServiceCatalog},
-		   {db_deployment,?Deployments}],
+    DbaseServices=?DbaseServices,
+  %  io:format("DbaseServices ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseServices}]),
     case NodesMnesiaStarted of
 	[]-> % initial start
 	    case [{error,Reason}||{error,Reason}<-[load_from_file(node(),Module,Source)||{Module,Source}<-DbaseServices]] of

@@ -19,7 +19,8 @@
 	 load_configs/0,
 	 connect/0,
 	 start_needed_apps/0,
-	 initiate_dbase/0
+	 initiate_dbase/0,
+	 schedule/1
 	]).
     
 
@@ -27,6 +28,84 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% -------------------------------------------------------------------
+% 
+% filtering()
+% scoring()
+
+schedule(Id)->
+    % podspecs
+    
+    PodSpecIds=db_deployment:pod_specs(Id),
+    PrefferedHosts=check_host(PodSpecIds),
+    FilteredNodesId=filtering(PrefferedHosts),
+    ScoringListOfHosts=scoring(FilteredNodesId),
+    % Allocate applications 
+    PodSpecIds,
+    ScoringListOfHosts.
+
+scoring([])->
+    {error,[no_nodes_available]};
+scoring(FilteredNodesId)->
+    NodeAdded=[{Id,db_host:node(Id)}||Id<-FilteredNodesId],
+    io:format("FilteredNodesId ~p~n",[FilteredNodesId]),
+    Z=[{lists:flatlength(L),Node}||{Node,L}<-sd:all()],
+    io:format("Z ~p~n",[Z]),
+    S1=lists:keysort(1,Z),
+    io:format("S1 ~p~n",[S1]),
+    SortedList=lists:reverse([Id||{Id,Node}<-NodeAdded,
+		 lists:keymember(Node,2,S1)]),
+    SortedList.
+    
+    
+
+filtering([])->
+    lib_status:node_started();
+filtering(PrefferedHosts)->
+    AvailableNodesId=lib_status:node_started(),
+    filtering(PrefferedHosts,AvailableNodesId,[]).
+
+ filtering([],_AvailableNodesId,FilteredNodesId)->
+    case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
+	[]->
+	    FilteredNodesId;
+	ErrorList->
+	    {error,ErrorList}
+    end;
+filtering([Host|T],AvailableNodesId,Acc)->
+    
+    NewAcc=case lists:keymember(Host,1,AvailableNodesId) of
+	       true->
+		   [Host|Acc];
+	       false->
+		   [{error,[Host]}|Acc]
+	   end,
+    filtering(T,AvailableNodesId,NewAcc).
+    
+
+
+check_host(PodSpecIds)->
+    check_host(PodSpecIds,[]).
+
+check_host([],PrefferedHosts)->
+    PrefferedHosts;
+check_host([Id|T],Acc) ->
+    NewAcc=case db_pods:host(Id) of
+	       {_,[]}->
+		   Acc;
+	       HostInfo->
+		   [HostInfo|Acc]
+	   end,
+    check_host(T,NewAcc).
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% -------------------------------------------------------------------
 load_configs()->
     {TestDir,TestPath}=?TestConfig,
     {Dir,Path}=?Config,
@@ -66,11 +145,7 @@ start_needed_apps()->
 %% Returns: non
 %% --------------------------------------------------------------------
 initiate_dbase()->
-  
-    DbaseServices=[{db_host,?HostConfiguration},
-		   {db_service_catalog,?ServiceCatalog},
-		   {db_deployment,?Deployments}],
-    LoadR=[load_from_file(node(),Module,Source)||{Module,Source}<-DbaseServices],
+    LoadR=[load_from_file(node(),Module,Source)||{Module,Source}<-?DbaseServices],
     io:format("LoadR ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,LoadR}]),
     ok.
 

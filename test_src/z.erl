@@ -24,7 +24,9 @@
 	 start/1,
 	 load/1,
 	 restart/1,
-	 leader/0
+	 leader/0,
+	 schedule/1,
+	 s/0
 	 
 	]).
 
@@ -61,6 +63,10 @@ start(Host)->
     gen_server:call(?SERVER, {start,Host},infinity).
 restart(Host)->
     gen_server:call(?SERVER, {restart,Host},infinity).
+schedule(DepId)->
+    gen_server:call(?SERVER, {schedule,DepId},infinity).
+s()->
+    gen_server:call(?SERVER, {s},infinity).
 
 %% ====================================================================
 %% Server functions
@@ -79,7 +85,7 @@ init([]) ->
     ok=lib_z:connect(),
     ok=lib_z:start_needed_apps(),
     ok=lib_z:initiate_dbase(),
-    io:format("sd ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,sd:all()}]),
+    io:format("sd(stdlib) ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,sd:get(stdlib)}]),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -96,6 +102,15 @@ handle_call({call,Host,M,F,A,T},_From, State) ->
     Reply=rpc:call(db_host:node({Host,"host"}),M,F,A,T),
     {reply, Reply, State};
 
+
+handle_call({s},_From, State) ->
+   
+    Reply=lib_z:schedule({"math","1.0.0"}),
+    {reply, Reply, State};
+handle_call({schedule,Id},_From, State) ->
+   
+    Reply=lib_z:schedule(Id),
+    {reply, Reply, State};
 
 handle_call({start,Host},_From, State) ->
    
