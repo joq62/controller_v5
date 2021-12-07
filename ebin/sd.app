@@ -2,7 +2,7 @@
 %% application.
 {application, sd,
 [{description, "Sd application and cluster" },
-{vsn, "0.1.0" },
+{vsn, "1.0.0" },
 {modules, 
 	  [sd,sd_sup,sd_app,sd_server]},
 {registered,[sd]},

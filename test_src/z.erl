@@ -83,9 +83,20 @@ s()->
 init([]) ->
     ok=lib_z:load_configs(),
     ok=lib_z:connect(),
+    
     ok=lib_z:start_needed_apps(),
     ok=lib_z:initiate_dbase(),
+    
+    % kill orphans
+    KilledNodes=[{Node,rpc:call(Node,init,stop,[],100)}||Node<-nodes(),
+				     false=:=lists:member(Node,[host@c203|lib_z:get()])],
+    
+    timer:sleep(3000),
+    ScratchDirs=[lib_z:scratch_workers(Node)||Node<-nodes()],
+    io:format("ScratchDirs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScratchDirs}]),
+    io:format("KilledNodes ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,KilledNodes}]),
     io:format("sd(stdlib) ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,sd:get(stdlib)}]),
+    
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------

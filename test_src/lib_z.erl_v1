@@ -7,7 +7,7 @@
 -module(lib_z).   
  
     
-%% --------------------------------------------------------------------1
+%% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
 -include("controller.hrl").
@@ -18,11 +18,9 @@
 -export([
 	 load_configs/0,
 	 connect/0,
-	 get/0,
 	 start_needed_apps/0,
 	 initiate_dbase/0,
-	 schedule/1,
-	 scratch_workers/1
+	 schedule/1
 	]).
     
 
@@ -38,36 +36,24 @@
 % 
 % filtering()
 % scoring()
--define(ServicePodExt,".service_pod").
-scratch_workers(Node)->
-    {ok,Files}=rpc:call(Node,file,list_dir,["."],2000),
-    [{Node,Dir,rpc:call(Node,os,cmd,["rm -r "++Dir],1000)}||Dir<-Files,
-					      ?ServicePodExt=:=filename:extension(Dir)].
 
 schedule(DeploymentId)->
     % podspecs
     
     % Get avaialble host candidates 
     PodSpecIds=db_deployment:pod_specs(DeploymentId),
-   % io:format("PodSpecIds ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodSpecIds}]),  
     PrefferedHosts=check_host(PodSpecIds),
-   % io:format("PrefferedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHosts}]),  
     FilteredNodesId=filtering(PrefferedHosts),
-   % io:format("FilteredNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FilteredNodesId}]),  
     Result=case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
 	       []->
 		   ScoringListOfHostId=scoring(FilteredNodesId),
-	%	   io:format("ScoringListOfHostId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScoringListOfHostId}]),  
 	           % Allocate applications on host
 		   AllocatedHost=allocate_host(PodSpecIds,ScoringListOfHostId),
-	%	   io:format("AllocatedHost ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,AllocatedHost}]),  
 		   StartR=start_pod(AllocatedHost),
-		   io:format("StartR ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,StartR}]),  
 		   StartR;
 	       ErrorList->
 		   {error,[ErrorList]}
 	   end,
-    io:format("Result ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Result}]),  
     Result.
 
 start_pod(AllocatedHost)->
@@ -75,47 +61,14 @@ start_pod(AllocatedHost)->
 start_pod([],Start)->
     Start;
 start_pod([{PodId,HostId,AppsInfo}|T],Acc)->	
+   
+    AppsInfo=[{{App,Vsn},db_service_catalog:git_path({App,Vsn})}||{App,Vsn}<-db_pods:application(PodId)],
     HostNode=db_host:node(HostId),
-    HostName=db_host:hostname(HostId),
-    PodName=db_pods:name(PodId),
-    NodeName=PodName++"_"++integer_to_list(erlang:system_time(microsecond)),
-    PodDir=NodeName++?ServicePodExt,
-    Cookie=db_host:cookie(HostId),
-    Args="-setcookie "++Cookie,   
-    NewAcc=case lib_os:start_slave(HostNode,HostName,NodeName,Args,PodDir) of
-		 {ok,Slave}->
-		     case net_adm:ping(Slave) of
-			 pong->
-			     StartResult=[{App,Vsn,load_start(Slave,PodDir,{App,Vsn,GitPath})}||{{App,Vsn},GitPath}<-AppsInfo],
-			     [{ok,[PodId,HostId,Slave,StartResult]}|Acc];
-			 Reason->
-			      [{error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}|Acc]
-		     end;
-	       Reason->
-		   [{error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}|Acc]
-	   end,
+    Combined=[{HostNode,AppInfo}||AppInfo<-AppsInfo],
+    NewAcc=lists:append(Combined,Acc),
     start_pod(T,NewAcc).
     
-load_start(Slave,PodDir,{App,Vsn,GitPath})->
-    AppDir=filename:join(PodDir,atom_to_list(App)),
-    Result=case rpc:call(Slave,os,cmd,["git clone "++GitPath++" "++AppDir],10*1000) of
-		  {badrpc,Reason}->
-		      {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,Slave,App,Vsn,PodDir]};
-		  _->
-		      Ebin=filename:join([AppDir,"ebin"]),
-		      case rpc:call(Slave,code,add_patha,[Ebin],5*1000) of
-			  true->
-			      case rpc:call(Slave,application,start,[App],5*1000) of
-					 ok->
-				      {ok,Slave,App,Vsn};
-				  Reason ->
-				      {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,Slave,App,Vsn,PodDir]}
-			      end;
-				 Reason ->
-			      {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,Slave,App,Vsn,PodDir]}
-		      end
-	   end,	     
-    Result.
+    
 
 allocate_host(PodSpecIds,ScoringListOfHostId)->
     allocate_host(PodSpecIds,ScoringListOfHostId,[]).
@@ -123,16 +76,40 @@ allocate_host([],_ScoringListOfHostId,AllocatedHost)->
     AllocatedHost;
 allocate_host([PodId|T],ScoringListOfHostId,Acc)->
     AppsInfo=[{{App,Vsn},db_service_catalog:git_path({App,Vsn})}||{App,Vsn}<-db_pods:application(PodId)],
-    NewAcc=case db_pods:host(PodId) of
-	       {_,[]}->
-		   [NewHostId|_]=ScoringListOfHostId,
-		   [{PodId,NewHostId,AppsInfo}|Acc];
-	       HostInfo->
-		   [{PodId,HostInfo,AppsInfo}|Acc]
+    io:format("AppsInfo ~p~n",[AppsInfo]),
+    Info=[XHostInfo,XAppsInfo||{_XPodId,XHostInfo,XAppsInfo}<-Acc],
+    
+    io:format("Info ~p~n",[Info]),
+    
+    NewAcc=case [{XPodId,XHostInfo,XAppsInfo}||{XPodId,XHostInfo,XAppsInfo}<-Acc,
+					       XAppsInfo=:=AppsInfo] of
+	       [{XPodId,XHostInfo,XAppsInfo}]->
+		   io:format("XPodId,XHostInfo,XAppsInfo ~p~n",[{XPodId,XHostInfo,XAppsInfo}]),  
+		   case db_pods:host(PodId) of
+		       {_,[]}->
+			   [NewHostId|_]=lists:reverse([Z||Z<-ScoringListOfHostId,
+							   false=:=(XHostInfo=:=Z)]),
+			   [{PodId,NewHostId,AppsInfo}|Acc];
+		       HostInfo->
+			   case HostInfo=:=XHostInfo of
+			       true->
+				   Acc;
+			       false ->
+				   [{PodId,XHostInfo,AppsInfo}|Acc]
+			   end
+		   end;
+	       [] ->
+		   case db_pods:host(PodId) of
+		       {_,[]}->
+			   [NewHostId|_]=ScoringListOfHostId,
+			   [{PodId,NewHostId,AppsInfo}|Acc];
+		       HostInfo->
+			   [{PodId,HostInfo,AppsInfo}|Acc]
+		   end
 	   end,
-%    io:format("NewAcc ~p~n",[NewAcc]),  
+    io:format("NewAcc ~p~n",[NewAcc]),  
     allocate_host(T,ScoringListOfHostId,NewAcc).
-
+    
     
 
 
@@ -141,9 +118,9 @@ scoring([])->
 scoring(FilteredNodesId)->
     NodeAdded=[{Id,db_host:node(Id)}||Id<-FilteredNodesId],
      Z=[{lists:flatlength(L),Node}||{Node,L}<-sd:all()],
- %   io:format("Z ~p~n",[Z]),
+    io:format("Z ~p~n",[Z]),
     S1=lists:keysort(1,Z),
- %   io:format("S1 ~p~n",[S1]),
+    io:format("S1 ~p~n",[S1]),
     SortedList=lists:reverse([Id||{Id,Node}<-NodeAdded,
 		 lists:keymember(Node,2,S1)]),
     SortedList.
@@ -212,12 +189,8 @@ load_configs()->
 %% Returns: non
 %% --------------------------------------------------------------------
 connect()->
-    
     connect:start(?ControllerNodes),
     ok.
-get()->
-    connect:get(?ControllerNodes).
-
 
 %% --------------------------------------------------------------------
 %% Function:start
