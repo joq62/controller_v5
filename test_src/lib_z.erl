@@ -37,23 +37,87 @@
 % filtering()
 % scoring()
 
-schedule(Id)->
+schedule(DeploymentId)->
     % podspecs
     
-    PodSpecIds=db_deployment:pod_specs(Id),
+    % Get avaialble host candidates 
+    PodSpecIds=db_deployment:pod_specs(DeploymentId),
     PrefferedHosts=check_host(PodSpecIds),
     FilteredNodesId=filtering(PrefferedHosts),
-    ScoringListOfHosts=scoring(FilteredNodesId),
-    % Allocate applications 
-    PodSpecIds,
-    ScoringListOfHosts.
+    Result=case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
+	       []->
+		   ScoringListOfHostId=scoring(FilteredNodesId),
+	           % Allocate applications on host
+		   AllocatedHost=allocate_host(PodSpecIds,ScoringListOfHostId),
+		   StartR=start_pod(AllocatedHost),
+		   StartR;
+	       ErrorList->
+		   {error,[ErrorList]}
+	   end,
+    Result.
+
+start_pod(AllocatedHost)->
+    start_pod(AllocatedHost,[]).
+start_pod([],Start)->
+    Start;
+start_pod([{PodId,HostId,AppsInfo}|T],Acc)->	
+   
+    AppsInfo=[{{App,Vsn},db_service_catalog:git_path({App,Vsn})}||{App,Vsn}<-db_pods:application(PodId)],
+    HostNode=db_host:node(HostId),
+    Combined=[{HostNode,AppInfo}||AppInfo<-AppsInfo],
+    NewAcc=lists:append(Combined,Acc),
+    start_pod(T,NewAcc).
+    
+    
+
+allocate_host(PodSpecIds,ScoringListOfHostId)->
+    allocate_host(PodSpecIds,ScoringListOfHostId,[]).
+allocate_host([],_ScoringListOfHostId,AllocatedHost)->
+    AllocatedHost;
+allocate_host([PodId|T],ScoringListOfHostId,Acc)->
+    AppsInfo=[{{App,Vsn},db_service_catalog:git_path({App,Vsn})}||{App,Vsn}<-db_pods:application(PodId)],
+    io:format("AppsInfo ~p~n",[AppsInfo]),
+    Info=[XHostInfo,XAppsInfo||{_XPodId,XHostInfo,XAppsInfo}<-Acc],
+    
+    io:format("Info ~p~n",[Info]),
+    
+    NewAcc=case [{XPodId,XHostInfo,XAppsInfo}||{XPodId,XHostInfo,XAppsInfo}<-Acc,
+					       XAppsInfo=:=AppsInfo] of
+	       [{XPodId,XHostInfo,XAppsInfo}]->
+		   io:format("XPodId,XHostInfo,XAppsInfo ~p~n",[{XPodId,XHostInfo,XAppsInfo}]),  
+		   case db_pods:host(PodId) of
+		       {_,[]}->
+			   [NewHostId|_]=lists:reverse([Z||Z<-ScoringListOfHostId,
+							   false=:=(XHostInfo=:=Z)]),
+			   [{PodId,NewHostId,AppsInfo}|Acc];
+		       HostInfo->
+			   case HostInfo=:=XHostInfo of
+			       true->
+				   Acc;
+			       false ->
+				   [{PodId,XHostInfo,AppsInfo}|Acc]
+			   end
+		   end;
+	       [] ->
+		   case db_pods:host(PodId) of
+		       {_,[]}->
+			   [NewHostId|_]=ScoringListOfHostId,
+			   [{PodId,NewHostId,AppsInfo}|Acc];
+		       HostInfo->
+			   [{PodId,HostInfo,AppsInfo}|Acc]
+		   end
+	   end,
+    io:format("NewAcc ~p~n",[NewAcc]),  
+    allocate_host(T,ScoringListOfHostId,NewAcc).
+    
+    
+
 
 scoring([])->
     {error,[no_nodes_available]};
 scoring(FilteredNodesId)->
     NodeAdded=[{Id,db_host:node(Id)}||Id<-FilteredNodesId],
-    io:format("FilteredNodesId ~p~n",[FilteredNodesId]),
-    Z=[{lists:flatlength(L),Node}||{Node,L}<-sd:all()],
+     Z=[{lists:flatlength(L),Node}||{Node,L}<-sd:all()],
     io:format("Z ~p~n",[Z]),
     S1=lists:keysort(1,Z),
     io:format("S1 ~p~n",[S1]),
