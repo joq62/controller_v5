@@ -7,7 +7,7 @@
 -module(lib_z).   
  
     
-%% --------------------------------------------------------------------
+%% --------------------------------------------------------------------1
 %% Include files
 %% --------------------------------------------------------------------
 -include("controller.hrl").
@@ -45,50 +45,37 @@ scratch_workers(Node)->
 					      ?ServicePodExt=:=filename:extension(Dir)].
 
 schedule(DeploymentId)->
+    % podspecs
+    
     % Get avaialble host candidates 
     PodSpecIds=db_deployment:pod_specs(DeploymentId),
-    io:format("PodSpecIds ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodSpecIds}]),  
+   % io:format("PodSpecIds ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodSpecIds}]),  
     PrefferedHosts=check_host(PodSpecIds),
-    io:format("PrefferedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHosts}]),  
-    Result=case [{error,Reason}||{error,Reason}<-PrefferedHosts] of
+   % io:format("PrefferedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHosts}]),  
+    FilteredNodesId=filtering(PrefferedHosts),
+   % io:format("FilteredNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FilteredNodesId}]),  
+    Result=case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
 	       []->
-		   FilteredNodesId=filtering(PrefferedHosts),
-		   io:format("FilteredNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FilteredNodesId}]),  
-		   case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
-		       []->
-			   ScoringListOfHostId=scoring(FilteredNodesId),
-			   case [{error,Reason}||{error,Reason}<-ScoringListOfHostId] of
-			       []->
-				   io:format("ScoringListOfHostId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScoringListOfHostId}]),  
-				   AllocatedHosts=[allocate_host(PodId,ScoringListOfHostId)||PodId<-PodSpecIds],
-				   io:format("AllocatedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,AllocatedHosts}]),  
-				   case [{error,Reason}||{error,Reason}<-AllocatedHosts] of
-				       []->
-					   StartR=[start_pod(AllocatedHost)||{ok,AllocatedHost}<-AllocatedHosts],
-					   io:format("StartR ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,StartR}]),  
-					   case [{error,Reason}||{error,Reason}<-StartR] of
-					       []->
-						   StartR;
-					       ErrorList->
-						   {error,[ErrorList]}
-					   end;
-				       ErrorList->
-					   {error,[ErrorList]}
-				   end;
-			       ErrorList->
-				   {error,[ErrorList]}
-			   end;
-		       ErrorList->
-			   {error,[ErrorList]}
-		   end;
+		   ScoringListOfHostId=scoring(FilteredNodesId),
+	%	   io:format("ScoringListOfHostId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScoringListOfHostId}]),  
+	           % Allocate applications on host
+		   AllocatedHost=[allocate_host(PodId,ScoringListOfHostId)||PodId<-PodSpecIds],
+		   io:format("AllocatedHost ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,AllocatedHost}]),  
+		   StartR=start_pod(AllocatedHost),
+		   io:format("StartR ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,StartR}]),  
+		   %[{ok,[DepId,HostId,Node,[{App,Vsn,
+		   StartR;
 	       ErrorList->
 		   {error,[ErrorList]}
 	   end,
     io:format("Result ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Result}]),  
     Result.
 
-start_pod({PodId,HostId,AppsInfo})->	
-      io:format("PodId,HostId,AppsInfo ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodId,HostId,AppsInfo}]),  
+start_pod(AllocatedHost)->
+    start_pod(AllocatedHost,[]).
+start_pod([],Start)->
+    Start;
+start_pod([{PodId,HostId,AppsInfo}|T],Acc)->	
     HostNode=db_host:node(HostId),
     HostName=db_host:hostname(HostId),
     PodName=db_pods:name(PodId),
@@ -96,18 +83,20 @@ start_pod({PodId,HostId,AppsInfo})->
     PodDir=NodeName++?ServicePodExt,
     Cookie=db_host:cookie(HostId),
     Args="-setcookie "++Cookie,   
-    case lib_os:start_slave(HostNode,HostName,NodeName,Args,PodDir) of
-	{ok,Slave}->
-	    case net_adm:ping(Slave) of
-		pong->
-		    StartResult=[{App,Vsn,load_start(Slave,PodDir,{App,Vsn,GitPath})}||{{App,Vsn},GitPath}<-AppsInfo],
-		    {ok,[PodId,HostId,Slave,StartResult]};
-		Reason->
-		    {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}
-	    end;
-	Reason->
-	    {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}
-    end.
+    NewAcc=case lib_os:start_slave(HostNode,HostName,NodeName,Args,PodDir) of
+		 {ok,Slave}->
+		     case net_adm:ping(Slave) of
+			 pong->
+			     StartResult=[{App,Vsn,load_start(Slave,PodDir,{App,Vsn,GitPath})}||{{App,Vsn},GitPath}<-AppsInfo],
+			     
+			     [{ok,[PodId,HostId,Slave,StartResult]}|Acc];
+			 Reason->
+			      [{error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}|Acc]
+		     end;
+	       Reason->
+		   [{error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}|Acc]
+	   end,
+    start_pod(T,NewAcc).
     
 
 load_start(Slave,PodDir,{App,Vsn,GitPath})->
@@ -136,16 +125,28 @@ allocate_host(PodId,ScoringListOfHostId)->
     case db_pods:host(PodId) of
 	{_,[]}->
 	    [NewHostId|_]=ScoringListOfHostId,
-	    {ok,{PodId,NewHostId,AppsInfo}};
-	{_,HostIds}->
-	    case [HostId||HostId<-HostIds,lists:member(HostId,ScoringListOfHostId)] of
-		[]->
-		    {error,[no_nodes_available,PodId,ScoringListOfHostId]};
-		[NewHostId|_]->
-		    {ok,{PodId,NewHostId,AppsInfo}}
-	    end
+	    {PodId,NewHostId,AppsInfo};
+	HostInfo->
+	    {PodId,HostInfo,AppsInfo}
     end.
 
+tabort_allocate_host(PodSpecIds,ScoringListOfHostId)->
+    tabort_allocate_host(PodSpecIds,ScoringListOfHostId,[]).
+tabort_allocate_host([],_ScoringListOfHostId,AllocatedHost)->
+    AllocatedHost;
+tabort_allocate_host([PodId|T],ScoringListOfHostId,Acc)->
+    AppsInfo=[{{App,Vsn},db_service_catalog:git_path({App,Vsn})}||{App,Vsn}<-db_pods:application(PodId)],
+    NewAcc=case db_pods:host(PodId) of
+	       {_,[]}->
+		   [NewHostId|_]=ScoringListOfHostId,
+		   [{PodId,NewHostId,AppsInfo}|Acc];
+	       HostInfo->
+		   [{PodId,HostInfo,AppsInfo}|Acc]
+	   end,
+%    io:format("NewAcc ~p~n",[NewAcc]),  
+    tabort_allocate_host(T,ScoringListOfHostId,NewAcc).
+
+    
 
 
 scoring([])->
@@ -164,18 +165,26 @@ scoring(FilteredNodesId)->
 
 filtering([])->
     lib_status:node_started();
-filtering(PrefferedHostIds)->
+filtering(PrefferedHosts)->
     AvailableNodesId=lib_status:node_started(),
- io:format("PrefferedHostIds,AvailableNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHostIds,AvailableNodesId}]),  
-    [filtering(HostId,AvailableNodesId)||HostId<-PrefferedHostIds].
+    filtering(PrefferedHosts,AvailableNodesId,[]).
 
-filtering(HostId,AvailableNodesId)->
-    case lists:member(HostId,AvailableNodesId) of
-	true->
-	    HostId;
-	false->
-	    {error,[HostId]}
-    end.
+ filtering([],_AvailableNodesId,FilteredNodesId)->
+    case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
+	[]->
+	    FilteredNodesId;
+	ErrorList->
+	    {error,ErrorList}
+    end;
+filtering([Host|T],AvailableNodesId,Acc)->
+    
+    NewAcc=case lists:keymember(Host,1,AvailableNodesId) of
+	       true->
+		   [Host|Acc];
+	       false->
+		   [{error,[Host]}|Acc]
+	   end,
+    filtering(T,AvailableNodesId,NewAcc).
     
 
 
@@ -188,8 +197,8 @@ check_host([Id|T],Acc) ->
     NewAcc=case db_pods:host(Id) of
 	       {_,[]}->
 		   Acc;
-	       {_,HostIds}->
-		   lists:append(HostIds,Acc)
+	       HostInfo->
+		   [HostInfo|Acc]
 	   end,
     check_host(T,NewAcc).
 %% --------------------------------------------------------------------
