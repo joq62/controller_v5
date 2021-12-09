@@ -116,10 +116,17 @@ handle_call({call,Host,M,F,A,T},_From, State) ->
 
 handle_call({s},_From, State) ->
    
-    Reply=lib_z:schedule({"math","1.0.0"}),
-    {reply, Reply, State};
+%    Reply=lib_z:schedule({"math","1.0.0"}),
+    Deployments=lib_z:schedule(),
+    Reply=case [{error,Reason}||{error,Reason}<-Deployments] of
+	      []->
+		  [{db_deployment:update_status(DeploymentId,Pods),DeploymentId,Pods}||{ok,DeploymentId,Pods}<-Deployments];
+	      ErrorList->
+		  {error,[ErrorList]}
+	  end,
+       {reply, Reply, State};
+
 handle_call({schedule,Id},_From, State) ->
-   
     Reply=lib_z:schedule(Id),
     {reply, Reply, State};
 

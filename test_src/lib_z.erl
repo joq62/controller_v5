@@ -21,6 +21,7 @@
 	 get/0,
 	 start_needed_apps/0,
 	 initiate_dbase/0,
+	 schedule/0,
 	 schedule/1,
 	 scratch_workers/1
 	]).
@@ -30,6 +31,23 @@
 %% ====================================================================
 %% External functions
 %% ====================================================================
+glurk()->
+    [{ok,[{"single_mymath","1.0.0"},
+	  {"c202","host"},
+	  single_mymath_1639080403557668@c202,
+	  [{mymath,"1.0.0",ok},
+	   {myadd,"1.0.0",ok},
+	   {mydivi,"1.0.0",ok},
+	   {sd,"1.0.0",ok}]]},
+     {ok,[{"mydivi","1.0.0"},
+	  {"c202","host"},
+	  mydivi_1639080410539668@c202,
+	  [{mydivi,"1.0.0",ok},{sd,"1.0.0",ok}]]},
+     {ok,[{"myadd","1.0.0"},
+	  {"c201","host"},
+	  myadd_1639080413550736@c201,
+	  [{myadd,"1.0.0",ok},{sd,"1.0.0",ok}]]}].
+
 %% --------------------------------------------------------------------
 %% Function:start
 %% Description: List of test cases 
@@ -43,52 +61,55 @@ scratch_workers(Node)->
     {ok,Files}=rpc:call(Node,file,list_dir,["."],2000),
     [{Node,Dir,rpc:call(Node,os,cmd,["rm -r "++Dir],1000)}||Dir<-Files,
 					      ?ServicePodExt=:=filename:extension(Dir)].
+schedule()->
+    {ok,I}=file:consult(?DeploymentSpec),
+    [schedule(DeploymentId)||DeploymentId<-I].
 
 schedule(DeploymentId)->
+    io:format("DeploymentId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,DeploymentId}]),
     % Get avaialble host candidates 
     PodSpecIds=db_deployment:pod_specs(DeploymentId),
-    io:format("PodSpecIds ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodSpecIds}]),  
+    %io:format("PodSpecIds ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodSpecIds}]),  
     PrefferedHosts=check_host(PodSpecIds),
-    io:format("PrefferedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHosts}]),  
+    %io:format("PrefferedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHosts}]),  
     Result=case [{error,Reason}||{error,Reason}<-PrefferedHosts] of
 	       []->
 		   FilteredNodesId=filtering(PrefferedHosts),
-		   io:format("FilteredNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FilteredNodesId}]),  
+		   %io:format("FilteredNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FilteredNodesId}]),  
 		   case [{error,Reason}||{error,Reason}<-FilteredNodesId] of
 		       []->
 			   ScoringListOfHostId=scoring(FilteredNodesId),
 			   case [{error,Reason}||{error,Reason}<-ScoringListOfHostId] of
 			       []->
-				   io:format("ScoringListOfHostId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScoringListOfHostId}]),  
+				   %io:format("ScoringListOfHostId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScoringListOfHostId}]),  
 				   AllocatedHosts=[allocate_host(PodId,ScoringListOfHostId)||PodId<-PodSpecIds],
-				   io:format("AllocatedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,AllocatedHosts}]),  
+				   %io:format("AllocatedHosts ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,AllocatedHosts}]),  
 				   case [{error,Reason}||{error,Reason}<-AllocatedHosts] of
 				       []->
 					   StartR=[start_pod(AllocatedHost)||{ok,AllocatedHost}<-AllocatedHosts],
-					   io:format("StartR ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,StartR}]),  
 					   case [{error,Reason}||{error,Reason}<-StartR] of
 					       []->
-						   StartR;
+						   R=[Info||{ok,Info}<-StartR],
+						   {ok,DeploymentId,R};
 					       ErrorList->
-						   {error,[ErrorList]}
+						   {error,[?MODULE,?FUNCTION_NAME,?LINE,starting_pods,DeploymentId,ErrorList]}
 					   end;
 				       ErrorList->
-					   {error,[ErrorList]}
+					   {error,[?MODULE,?FUNCTION_NAME,?LINE,no_hosts_allocated,DeploymentId,ErrorList]}
 				   end;
 			       ErrorList->
-				   {error,[ErrorList]}
+				   {error,[?MODULE,?FUNCTION_NAME,?LINE,no_hosts_available,DeploymentId,ErrorList]}
 			   end;
 		       ErrorList->
-			   {error,[ErrorList]}
+			   {error,[?MODULE,?FUNCTION_NAME,?LINE,missing_host,DeploymentId,ErrorList]}
 		   end;
 	       ErrorList->
-		   {error,[ErrorList]}
+		   {error,[?MODULE,?FUNCTION_NAME,?LINE,missing_preffered_host,DeploymentId,ErrorList]}
 	   end,
-    io:format("Result ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Result}]),  
     Result.
 
 start_pod({PodId,HostId,AppsInfo})->	
-      io:format("PodId,HostId,AppsInfo ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodId,HostId,AppsInfo}]),  
+   %   io:format("PodId,HostId,AppsInfo ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PodId,HostId,AppsInfo}]),  
     HostNode=db_host:node(HostId),
     HostName=db_host:hostname(HostId),
     PodName=db_pods:name(PodId),
@@ -100,8 +121,14 @@ start_pod({PodId,HostId,AppsInfo})->
 	{ok,Slave}->
 	    case net_adm:ping(Slave) of
 		pong->
-		    StartResult=[{App,Vsn,load_start(Slave,PodDir,{App,Vsn,GitPath})}||{{App,Vsn},GitPath}<-AppsInfo],
-		    {ok,[PodId,HostId,Slave,StartResult]};
+		    StartR=[{load_start(Slave,PodDir,{App,Vsn,GitPath}),App,Vsn}||{{App,Vsn},GitPath}<-AppsInfo],
+		    case [{error,Reason}||{error,Reason}<-StartR] of
+			[]->
+			    StartResult=[{App,Vsn}||{ok,App,Vsn}<-StartR],
+			    {ok,[PodId,HostId,Slave,StartResult]};
+			ErrorList->
+			    {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,ErrorList]}
+		    end;		    
 		Reason->
 		    {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,Reason,PodId,HostId,AppsInfo]}
 	    end;
@@ -166,7 +193,6 @@ filtering([])->
     lib_status:node_started();
 filtering(PrefferedHostIds)->
     AvailableNodesId=lib_status:node_started(),
- io:format("PrefferedHostIds,AvailableNodesId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,PrefferedHostIds,AvailableNodesId}]),  
     [filtering(HostId,AvailableNodesId)||HostId<-PrefferedHostIds].
 
 filtering(HostId,AvailableNodesId)->
@@ -185,6 +211,7 @@ check_host(PodSpecIds)->
 check_host([],PrefferedHosts)->
     PrefferedHosts;
 check_host([Id|T],Acc) ->
+    io:format("Id ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Id}]), 
     NewAcc=case db_pods:host(Id) of
 	       {_,[]}->
 		   Acc;
@@ -210,6 +237,22 @@ load_configs()->
 %% Description: List of test cases 
 %% Returns: non
 %% -------------------------------------------------------------------
+
+
+
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% -------------------------------------------------------------------
+
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% -------------------------------------------------------------------
+
+
 %% --------------------------------------------------------------------
 %% Function:start
 %% Description: List of test cases 
