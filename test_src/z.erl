@@ -96,7 +96,7 @@ init([]) ->
     io:format("ScratchDirs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,ScratchDirs}]),
     io:format("KilledNodes ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,KilledNodes}]),
     io:format("sd(stdlib) ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,sd:get(stdlib)}]),
-    
+    rpc:cast(node(),z,s,[]),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -117,13 +117,24 @@ handle_call({call,Host,M,F,A,T},_From, State) ->
 handle_call({s},_From, State) ->
    
 %    Reply=lib_z:schedule({"math","1.0.0"}),
+    {ok,WantedDeployments}=file:consult(?DeploymentSpec),
+    %%
+    io:format("IsAppsStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
+				     [{Id,lib_z:is_applications_started(Id)}||Id<-WantedDeployments]}]),  
+    io:format("deploy_node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
+				     [{Id,db_deployment:deploy_node(Id)}||Id<-WantedDeployments]}]),  
     Deployments=lib_z:schedule(),
     Reply=case [{error,Reason}||{error,Reason}<-Deployments] of
 	      []->
-		  [{db_deployment:update_status(DeploymentId,Pods),DeploymentId,Pods}||{ok,DeploymentId,Pods}<-Deployments];
+		  [{db_deployment:update_status(DeploymentId,Pods),DeploymentId,Pods}||{ok,DeploymentId,Pods}<-Deployments],
+		  [{Id,db_deployment:is_deployed(Id)}||Id<-WantedDeployments];
 	      ErrorList->
 		  {error,[ErrorList]}
 	  end,
+    io:format("IsAppsStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
+				     [{Id,lib_z:is_applications_started(Id)}||Id<-WantedDeployments]}]),  
+    io:format("deploy_node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
+				   [{Id,db_deployment:deploy_node(Id)}||Id<-WantedDeployments]}]),  
        {reply, Reply, State};
 
 handle_call({schedule,Id},_From, State) ->

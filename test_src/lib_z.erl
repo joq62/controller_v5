@@ -16,6 +16,8 @@
 
 %% External exports
 -export([
+	 is_applications_started/1,
+	 is_node_running/1,
 	 load_configs/0,
 	 connect/0,
 	 get/0,
@@ -62,8 +64,70 @@ scratch_workers(Node)->
     [{Node,Dir,rpc:call(Node,os,cmd,["rm -r "++Dir],1000)}||Dir<-Files,
 					      ?ServicePodExt=:=filename:extension(Dir)].
 schedule()->
-    {ok,I}=file:consult(?DeploymentSpec),
-    [schedule(DeploymentId)||DeploymentId<-I].
+    {ok,WantedDeployments}=file:consult(?DeploymentSpec),
+    %%
+    
+    [schedule(DeploymentId)||DeploymentId<-WantedDeployments].
+   
+
+wanted_state(DeploymentId)->
+    case is_nodes_running(DeploymentId) of
+	true->
+	    case is_applications_started(DeploymentId) of
+		true->
+		    ok;
+		ErrorList->
+	    
+is_applications_started(DeploymentId)->
+    case  db_deployment:deploy_apps(DeploymentId) of
+	[]->
+	    {error,[?MODULE,?FUNCTION_NAME,?LINE,eexists,DeploymentId]};
+	stopped ->
+	    false;	   
+	WantedAppsList->
+	    Check=[is_applications_started(Node,AppList)||{Node,AppList}<-WantedAppsList],
+	    case [{error,Reason}||{error,Reason}<-Check] of
+		[]->
+		    true;
+		false ->
+		    glurk_remove_info_from_node=db_deployment:deploy_apps(DeploymentId)
+	    end
+    end.
+
+is_applications_started(Node,AppList)->
+    Result=case rpc:call(Node,application,which_applications,[],5*1000) of
+	       {badrpc,Reason}->
+		   {error,[?MODULE,?FUNCTION_NAME,?LINE,badrpc,Reason]};
+	       Applications->
+		   case [{App,Vsn}||{App,Vsn}<-AppList,
+			      true/=lists:keymember(App,1,Applications)] of
+		       []->
+			   true;
+		       _MissingApps->
+			   false
+		   end
+	   end,
+    Result.
+
+is_nodes_running(DeploymentId)->
+    case  db_deployment:deploy_node(DeploymentId) of
+	[]->
+	    {error,[?MODULE,?FUNCTION_NAME,?LINE,eexists,DeploymentId]};
+	stopped ->
+	    {error,[?MODULE,?FUNCTION_NAME,?LINE,stopped,DeploymentId]};
+	Nodes->
+	    PingR=[{Node,net_adm:ping(Node)}||Node<-Node],
+	    case [{error,Node}||{Node,pang}<-PingR] of
+		[]->
+		    true;
+		ErrorList ->
+		    {error,[ErrorList]}
+	    end
+    end.
+		
+    
+is_deployed(DeploymentId)->
+    db_deployment:is_deployed(DeploymentId).
 
 schedule(DeploymentId)->
     io:format("DeploymentId ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,DeploymentId}]),
@@ -211,7 +275,7 @@ check_host(PodSpecIds)->
 check_host([],PrefferedHosts)->
     PrefferedHosts;
 check_host([Id|T],Acc) ->
-    io:format("Id ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Id}]), 
+   % io:format("Id ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Id}]), 
     NewAcc=case db_pods:host(Id) of
 	       {_,[]}->
 		   Acc;
