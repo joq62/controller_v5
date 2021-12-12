@@ -5,6 +5,7 @@
 -define(Deployments,"test_configurations/deployments").
 -define(ServiceCatalog,"test_configurations/service_catalog/service.catalog").
 -define(PodSpecs,"test_configurations/pods").
+-define(DbaseServices,"test_configurations/dbase.spec").
 -else.
 -define(ControllerNodes,"configurations/controller.nodes").
 -define(DeploymentSpec,"configurations/deployment.spec").
@@ -12,13 +13,9 @@
 -define(Deployments,"configurations/deployments").
 -define(ServiceCatalog,"configurations/service_catalog/service.catalog").
 -define(PodSpecs,"configurations/pods").
+-define(DbaseServices,"configurations/dbase.spec").
 -endif.
 
-
--define(DbaseServices,[{db_host,?HostConfiguration},
-		       {db_service_catalog,?ServiceCatalog},
-		       {db_deployment,?Deployments},
-		       {db_pods,?PodSpecs}]).
 
 
 -define(ScheduleInterval,1*30*1000).

@@ -120,10 +120,11 @@ handle_call({s},_From, State) ->
     {ok,WantedDeployments}=file:consult(?DeploymentSpec),
     %%
     io:format("IsAppsStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
-				     [{Id,lib_z:is_applications_started(Id)}||Id<-WantedDeployments]}]),  
+				     [{Id,lib_z:is_pod_running(Id)}||Id<-WantedDeployments]}]),  
     io:format("deploy_node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
 				     [{Id,db_deployment:deploy_node(Id)}||Id<-WantedDeployments]}]),  
     Deployments=lib_z:schedule(),
+    gl=Deployments,
     Reply=case [{error,Reason}||{error,Reason}<-Deployments] of
 	      []->
 		  [{db_deployment:update_status(DeploymentId,Pods),DeploymentId,Pods}||{ok,DeploymentId,Pods}<-Deployments],
@@ -132,7 +133,7 @@ handle_call({s},_From, State) ->
 		  {error,[ErrorList]}
 	  end,
     io:format("IsAppsStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
-				     [{Id,lib_z:is_applications_started(Id)}||Id<-WantedDeployments]}]),  
+				     [{Id,lib_z:is_pod_running(Id)}||Id<-WantedDeployments]}]),  
     io:format("deploy_node ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,
 				   [{Id,db_deployment:deploy_node(Id)}||Id<-WantedDeployments]}]),  
        {reply, Reply, State};

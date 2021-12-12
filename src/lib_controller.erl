@@ -62,6 +62,7 @@ start_needed_apps()->
     application:set_env([{bully,[{nodes,ControllerNodes}]}]),
     ok=application:start(bully),
     ok=application:start(host),
+    ok=application:start(logger_infra),
     timer:sleep(1000),
     ok.
 
@@ -75,11 +76,12 @@ initiate_dbase()->
     NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
    % io:format("NodesMnesiaStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),NodesMnesiaStarted}]),
-    DbaseServices=?DbaseServices,
-  %  io:format("DbaseServices ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseServices}]),
+    DbaseSpecs=dbase_infra:get_dbase_specs(),
+  %  io:format("DbaseSpecs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseSpecs}]),
     case NodesMnesiaStarted of
 	[]-> % initial start
-	    case [{error,Reason}||{error,Reason}<-[load_from_file(node(),Module,Source)||{Module,Source}<-DbaseServices]] of
+	    LoadResult=[{Module,dbase_infra:load_from_file(Module,Dir,Directive)}||{Module,Dir,Directive}<-DbaseSpecs],
+	    case [{Module,R}||{Module,R}<-LoadResult,R/=ok] of
 		[]->
 		    ok;
 		ReasonList->
@@ -89,16 +91,17 @@ initiate_dbase()->
 %	    io:format("Node0 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Node0}]),
 	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
 	    timer:sleep(500),
-	    _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseServices],
+	    _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseSpecs],
 	    
 	    timer:sleep(500),
 	    ok
     end,
     ok.
 
-load_from_file(Node,Module,Source)->
-    LoadResult=[R||R<-rpc:call(Node,dbase_infra,load_from_file,[Module,Source],5*1000),
-			   R/={atomic,ok}],
+
+init_dbase_service(Node,{Module,Source,Directive})->
+    LoadResult=[R||R<-rpc:call(Node,dbase_infra,load_from_file,[Module,Source,Directive],5*1000),
+			   R/=ok],
     Result=case LoadResult of
 	       []-> %ok
 		   {ok,[Node,Module]};

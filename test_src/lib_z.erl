@@ -16,8 +16,8 @@
 
 %% External exports
 -export([
-	 is_applications_started/1,
-	 is_node_running/1,
+	% is_applications_started/1,
+	 is_pod_running/1,
 	 load_configs/0,
 	 connect/0,
 	 get/0,
@@ -70,27 +70,44 @@ schedule()->
     [schedule(DeploymentId)||DeploymentId<-WantedDeployments].
    
 
+
 wanted_state(DeploymentId)->
-    case is_nodes_running(DeploymentId) of
+    DeployStateIds=db_deploy_state:deployment(DeploymentId),
+    
+    case gl:are_hosts_running(DeploymentId) of
 	true->
-	    case is_applications_started(DeploymentId) of
+	    case gl:are_pods_running(DeploymentId) of
 		true->
 		    ok;
 		ErrorList->
+						%delete and restart deployment
+		    {error,ErrorList}
+	    end;
+	ErrorList->
+	    {error,ErrorList}
+    end.
+		    
 	    
-is_applications_started(DeploymentId)->
-    case  db_deployment:deploy_apps(DeploymentId) of
+
+remove_deployment(DeploymentId)->
+    %%
+    
+    ok.
+
+
+is_pod_running(DeploymentId)->
+    case  db_deployment:deploy_node(DeploymentId) of
 	[]->
 	    {error,[?MODULE,?FUNCTION_NAME,?LINE,eexists,DeploymentId]};
 	stopped ->
 	    false;	   
-	WantedAppsList->
-	    Check=[is_applications_started(Node,AppList)||{Node,AppList}<-WantedAppsList],
-	    case [{error,Reason}||{error,Reason}<-Check] of
+	WantedPodIdNodes->
+	    Check=[{net_adm:ping(Node),PodId,Node}||{PodId,Node}<-WantedPodIdNodes],
+	    case [{error,[PodId,Node]}||{pang,PodId,Node}<-Check] of
 		[]->
 		    true;
-		false ->
-		    glurk_remove_info_from_node=db_deployment:deploy_apps(DeploymentId)
+		ErrorList->
+		    {error,ErrorList}
 	    end
     end.
 
@@ -116,7 +133,7 @@ is_nodes_running(DeploymentId)->
 	stopped ->
 	    {error,[?MODULE,?FUNCTION_NAME,?LINE,stopped,DeploymentId]};
 	Nodes->
-	    PingR=[{Node,net_adm:ping(Node)}||Node<-Node],
+	    PingR=[{Node,net_adm:ping(Node)}||Node<-Nodes],
 	    case [{error,Node}||{Node,pang}<-PingR] of
 		[]->
 		    true;
@@ -154,7 +171,9 @@ schedule(DeploymentId)->
 					   case [{error,Reason}||{error,Reason}<-StartR] of
 					       []->
 						   R=[Info||{ok,Info}<-StartR],
-						   {ok,DeploymentId,R};
+						   Id=erlang:system_time(microsecond),
+						   [db_deploy_state:create(Id,DeploymentId,PodInfo)||PodInfo<-R],
+						   {ok,Id,DeploymentId,R};
 					       ErrorList->
 						   {error,[?MODULE,?FUNCTION_NAME,?LINE,starting_pods,DeploymentId,ErrorList]}
 					   end;
@@ -182,14 +201,14 @@ start_pod({PodId,HostId,AppsInfo})->
     Cookie=db_host:cookie(HostId),
     Args="-setcookie "++Cookie,   
     case lib_os:start_slave(HostNode,HostName,NodeName,Args,PodDir) of
-	{ok,Slave}->
+	{ok,Slave,PodDir}->
 	    case net_adm:ping(Slave) of
 		pong->
 		    StartR=[{load_start(Slave,PodDir,{App,Vsn,GitPath}),App,Vsn}||{{App,Vsn},GitPath}<-AppsInfo],
 		    case [{error,Reason}||{error,Reason}<-StartR] of
 			[]->
 			    StartResult=[{App,Vsn}||{ok,App,Vsn}<-StartR],
-			    {ok,[PodId,HostId,Slave,StartResult]};
+			    {ok,[PodId,HostId,Slave,PodDir,StartResult]};
 			ErrorList->
 			    {error,[node(),?MODULE,?FUNCTION_NAME,?LINE,ErrorList]}
 		    end;		    
