@@ -17,9 +17,11 @@
 %% External exports
 -export([
 	 load_configs/0,
+	 load_configs/1,
 	 connect/0,
 	 start_needed_apps/0,
 	 initiate_dbase/0,
+	 initiate_dbase/1,
 	 load_services/0
 	]).
     
@@ -35,6 +37,19 @@ load_configs()->
     os:cmd("rm -rf "++Dir),
     os:cmd("git clone "++TestPath),
     os:cmd("git clone "++Path),
+    ok.
+
+load_configs(Root)->
+    {TestDir,TestPath}=?TestConfig,
+    {ProductionDir,Path}=?Config,
+    TDir=filename:join(Root,TestDir),
+    PDir=filename:join(Root,ProductionDir),
+    os:cmd("rm -rf "++TDir),
+    os:cmd("rm -rf "++PDir),
+    os:cmd("git clone "++TestPath),
+    os:cmd("mv "++TestDir++" "++Root),
+    os:cmd("git clone "++Path),
+    os:cmd("mv "++ProductionDir++" "++Root),
     ok.
 %% --------------------------------------------------------------------
 %% Function:start
@@ -57,12 +72,14 @@ connect()->
 %% --------------------------------------------------------------------
 start_needed_apps()->
     ok=application:start(dbase_infra),
+ %   ok=initiate_dbase(),
     ok=application:start(sd),
+    ok=application:start(logger_infra),
     ControllerNodes=connect:get(?ControllerNodes),
     application:set_env([{bully,[{nodes,ControllerNodes}]}]),
     ok=application:start(bully),
     ok=application:start(host),
-    ok=application:start(logger_infra),
+
     timer:sleep(1000),
     ok.
 
@@ -72,15 +89,19 @@ start_needed_apps()->
 %% Returns: non
 %% --------------------------------------------------------------------
 initiate_dbase()->
-    RunningNodes=lists:delete(node(),connect:start(?ControllerNodes)),
+    initiate_dbase(".").    
+initiate_dbase(Root)->
+    ControllerNodesSpecFile=filename:join(Root,?ControllerNodes),
+    RunningNodes=lists:delete(node(),connect:start(ControllerNodesSpecFile)),
     NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
    % io:format("NodesMnesiaStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),NodesMnesiaStarted}]),
     DbaseSpecs=dbase_infra:get_dbase_specs(),
-  %  io:format("DbaseSpecs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseSpecs}]),
+    io:format("DbaseSpecs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseSpecs}]),
     case NodesMnesiaStarted of
 	[]-> % initial start
-	    LoadResult=[{Module,dbase_infra:load_from_file(Module,Dir,Directive)}||{Module,Dir,Directive}<-DbaseSpecs],
+	    DbaseSpecs_2=[{Module,filename:join(Root,Dir),Directive}||{Module,Dir,Directive}<-DbaseSpecs],
+	    LoadResult=[{Module,dbase_infra:load_from_file(Module,Dir,Directive)}||{Module,Dir,Directive}<-DbaseSpecs_2],
 	    case [{Module,R}||{Module,R}<-LoadResult,R/=ok] of
 		[]->
 		    ok;
@@ -88,7 +109,7 @@ initiate_dbase()->
 		    {error,ReasonList}
 	    end;
 	[Node0|_]->
-%	    io:format("Node0 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Node0}]),
+	    io:format("Node0 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Node0}]),
 	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
 	    timer:sleep(500),
 	    _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseSpecs],

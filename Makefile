@@ -108,9 +108,12 @@ z:
 #	sd
 	cp ../sd/src/*.app ebin;
 	erlc -D unit_test -I include -o ebin ../sd/src/*.erl;
+#	logger_infra
+	cp ../logger_infra/src/*.app ebin;
+	erlc -D unit_test -I include -o ebin ../logger_infra/src/*.erl;
 #	dbase_infra
 	cp ../dbase_infra/src/*.app ebin;
-	erlc -D unit_test -I include -o ebin ../dbase_infra/src/*.erl;
+	erlc -D unit_test -I ../dbase_infra/include -I include -o ebin ../dbase_infra/src/*.erl;
 #	host
 	cp ../host/src/*.app ebin;
 	erlc -D unit_test -I include -o ebin ../host/src/*.erl;

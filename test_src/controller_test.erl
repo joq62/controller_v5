@@ -132,9 +132,6 @@ add_node()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
-
-get_nodes()->
-    [host@c200,host@c201,host@c202,host@c100].
     
 start_slave(NodeName)->
     HostId=net_adm:localhost(),
@@ -145,7 +142,7 @@ start_slave(NodeName)->
     slave:start(HostId,NodeName,Args).
 
 setup()->
-    Nodes=[host@c200,host@c201,host@c202,host@c100],
+
     [rpc:call(Node,init,stop,[],100)||Node<-Nodes],
     timer:sleep(2000),
     HostId=net_adm:localhost(),
