@@ -10,12 +10,14 @@
 %% Include files
 %% --------------------------------------------------------------------
 -include_lib("eunit/include/eunit.hrl").
+-include("controller.hrl").
 %% --------------------------------------------------------------------
 
 %% External exports
 -export([start/0]).
 
-
+%-define(PodDir,"test.pod").
+-define(PodDir,".").
 
 %% ====================================================================
 %% External functions
@@ -49,11 +51,30 @@ start()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
-
 setup()->
+    %load configas
+    ok=application:start(sd),
+    ok=application:start(bully),
+    ok=application:start(dbase_infra),
+    
+    Ids=lists:sort(db_host:ids()),
+    Ids=[{"c100","host1"},
+	 {"c100","host2"},
+	 {"c100","host3"},
+	 {"c100","host4"}],
 
-   % ok=application:start(controller),
- 
+    Nodes=[db_host:node(Id)||Id<-Ids],
+    [host1@c100,host2@c100,host3@c100,host4@c100]=Nodes,
+    [rpc:call(Node,init,stop,[],1000)||Node<-Nodes],
+    timer:sleep(1000),
+    {ok,AppInfo}=host_desired_state:start(),
+    [{{"c100","host1"},host1@c100},
+     {{"c100","host2"},host2@c100},
+     {{"c100","host3"},host3@c100}, 
+     {{"c100","host4"},host4@c100}]=lists:keysort(2,AppInfo),
+    ok=application:start(host),
+    Date=date(),
+    [Date,Date,Date,Date]=[rpc:call(Node,erlang,date,[],1000)||Node<-Nodes],
     ok.
 
 

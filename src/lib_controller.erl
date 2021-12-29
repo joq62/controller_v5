@@ -38,6 +38,13 @@ load_configs()->
     os:cmd("git clone "++TestPath),
     os:cmd("git clone "++Path),
     ok.
+delete_configs()->
+    {TestDir,TestPath}=?TestConfig,
+    {Dir,Path}=?Config,
+    os:cmd("rm -rf "++TestDir),
+    os:cmd("rm -rf "++Dir),
+    ok.
+    
 
 load_configs(Root)->
     {TestDir,TestPath}=?TestConfig,
@@ -50,6 +57,7 @@ load_configs(Root)->
     os:cmd("mv "++TestDir++" "++Root),
     os:cmd("git clone "++Path),
     os:cmd("mv "++ProductionDir++" "++Root),
+    
     ok.
 %% --------------------------------------------------------------------
 %% Function:start
