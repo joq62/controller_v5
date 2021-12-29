@@ -75,6 +75,7 @@ setup()->
     ok=application:start(host),
     Date=date(),
     [Date,Date,Date,Date]=[rpc:call(Node,erlang,date,[],1000)||Node<-Nodes],
+    ok=application:start(controller),
     ok.
 
 

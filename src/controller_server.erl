@@ -53,19 +53,7 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    ok=lib_controller:load_configs(),
-    ok=lib_controller:connect(),
-    ok=lib_controller:start_needed_apps(),
-    ok=lib_controller:initiate_dbase(),
-    
-    case bully:am_i_leader(node()) of
-	false->
-	    act_follower;
-	true->
-	    host:desired_state(self())
-    end,
-    S=self(),
-    spawn(fun()->call_desired_state(S) end),
+    spawn(fun()->call_desired_state() end),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -106,9 +94,7 @@ handle_cast({deallocate,Node,App}, State) ->
     {noreply, State};
 
 handle_cast({desired_state}, State) ->
-    S=self(),
-   %  io:format("~p~n",[{time(),S,node(),bully:am_i_leader(node()),?MODULE,?FUNCTION_NAME,?LINE}]),
-    spawn(fun()->call_desired_state(S) end),
+    spawn(fun()->call_desired_state() end),
     {noreply, State};
 
 handle_cast(Msg, State) ->
@@ -150,13 +136,16 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
-call_desired_state(MyPid)->
-  %  io:format("~p~n",[{time(),node(),MyPid,bully:am_i_leader(node()),?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=host:desired_state(MyPid),	      
-   % io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,R}]),
+call_desired_state()->
     timer:sleep(?ScheduleInterval),
-    Result=rpc:call(node(),controller_desired_state,start,[],1*60*1000),
- %   not_implmented=Result,
-%    io:format("~p~n",[{time(),node(),MyPid,Result,?MODULE,?FUNCTION_NAME,?LINE}]),
+    case rpc:call(node(),bully,am_i_leader,[node()],1000) of
+	{badrpc,_}->
+	    ok;
+	false->
+	    ok;
+	true->
+	    Result=rpc:call(node(),controller_desired_state,start,[],1*60*1000),
+	    io:format("~p~n",[{time(),node(),Result,?MODULE,?FUNCTION_NAME,?LINE}])
+    end,
     rpc:cast(node(),controller,desired_state,[]).
 		  

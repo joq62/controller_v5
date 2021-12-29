@@ -33,12 +33,12 @@ start()->
   %  io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
 %    io:format("~p~n",[{"Start pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass1(),
-    io:format("~p~n",[{"Stop pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+%    ok=pass1(),
+%    io:format("~p~n",[{"Stop pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
 %    io:format("~p~n",[{"Start pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
-%    ok=pass2(),
-%    io:format("~p~n",[{"Stop pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass2(),
+    io:format("~p~n",[{"Stop pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
  %   io:format("~p~n",[{"Start add_node()",?MODULE,?FUNCTION_NAME,?LINE}]),
  %   ok=add_node(),
@@ -73,6 +73,15 @@ start()->
 
 
 
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% -------------------------------------------------------------------
+pass2()->
+    
+
+    ok.
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -194,15 +203,6 @@ pod_specs([{DepId,PodSpecs}|T],Acc) ->
     NewAcc=lists:append(R,Acc),
     pod_specs(T,NewAcc).
 
-%% --------------------------------------------------------------------
-%% Function:start/0 
-%% Description: Initiate the eunit tests, set upp needed processes etc
-%% Returns: non
-%% -------------------------------------------------------------------
-pass2()->
-    
-    ok.
-    
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
