@@ -28,7 +28,11 @@ start()->
     AllDepIds=db_deployment:all_id(),
     WantedState=[{DepId,db_deployment:pod_specs(DepId)}||DepId<-AllDepIds],
     io:format("WantedState ~p~n",[{WantedState,?MODULE,?FUNCTION_NAME,?LINE}]),
-    AllDeployStates=lists:append([db_deploy_state:deployment(Id)||Id<-db_deploy_state:deploy_id()]),
+    
+   % {InstanceId,DepId,[{PodNode,PodDir,PodId}]}
+    
+    AllDeployStates=db_deploy_state:read_all(),			 
+  %  AllDeployStates=lists:append([db_deploy_state:deployment(Id)||Id<-db_deploy_state:deploy_id()]),
     io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
 					  false=:=lists:keymember(DepId,2,AllDeployStates)],
@@ -66,7 +70,7 @@ deploy([{DepId,PodSpecs}|T],Acc)->
 		      % HostNode=db_host:node(HostId),
 		   XId
 	   end,
-    DepInstanceId=db_deploy_state:create(DepId,[]),
+    {ok,DepInstanceId}=db_deploy_state:create(DepId,[]),
     NewAcc=case start_pod(PodSpecs,HostId,DepInstanceId,[]) of
 	       {error,Reason}->
 		   db_deploy_state:delete(DepInstanceId),		   
@@ -100,6 +104,7 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 				 {error,Reason};
 			     {ok,PodAppInfo}->
 				 io:format("HostId,PodAppInfo ~p~n",[{HostId,PodAppInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
+				 io:format("DepInstanceId  ~p~n",[{DepInstanceId,PodNode,PodDir,PodId,?MODULE,?FUNCTION_NAME,?LINE}]),
 				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
 				 {ok,PodAppInfo}
 				     
