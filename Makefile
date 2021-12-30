@@ -27,18 +27,21 @@ unit_test:
 #	dbase_infra
 	cp ../dbase_infra/src/*.app ebin;
 	erlc -D unit_test -I include -I ../dbase_infra/include -I ../../include -o ebin ../dbase_infra/src/*.erl;
+#	dbase_infra
+	cp ../logger_infra/src/*.app ebin;
+	erlc -D unit_test -I include -I ../logger_infra/include -I ../../include -o ebin ../logger_infra/src/*.erl;
 #	host
 	cp ../host/src/*.app ebin;
 	erlc -D unit_test -I ../../include -I include -o ebin ../host/src/*.erl;
 #	app
 	cp src/*.app ebin;
-	erlc -D unit_test -I ../../include -I include -o ebin src/*.erl;
+	erlc -D unit_test -I ../logger_infra/include -I ../../include -I include -o ebin src/*.erl;
 #	test application
 	cp test_src/*.app test_ebin;
 	erlc -D unit_test -I include -I ../../include -o test_ebin test_src/*.erl;
 	erl -pa ebin -pa test_ebin\
 	    -setcookie cookie_test\
-	    -sname test_glurk\
+	    -sname aa\
 	    -unit_test monitor_node test\
 	    -unit_test cluster_id test\
 	    -unit_test cookie cookie_test\
