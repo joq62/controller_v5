@@ -22,8 +22,8 @@
 %% External functions
 %% ====================================================================
 start()->
-    io:format("********* ~p",[{time(),node(),"*********"}]),
-    io:format("~n"),
+ %   io:format("********* ~p",[{time(),node(),"*********"}]),
+  %  io:format("~n"),
     
     AllDepIds=db_deployment:all_id(),
     WantedState=[{DepId,db_deployment:pod_specs(DepId)}||DepId<-AllDepIds],
@@ -53,33 +53,33 @@ start()->
 	    ok;
 	MissingControllers->
 	    deploy(MissingControllers),
-	    ok=logger_infra:log(?logger_info(ticket,"Missing  controllers",[MissingControllers]))
+	    log:log(?logger_info(info,"Missing  controllers",[MissingControllers]))
     end,
     case MissingWorkers of
 	[]->
 	    ok;
 	MissingWorkers->
 	    deploy(MissingWorkers),
-	    ok=logger_infra:log(?logger_info(ticket,"Missing  workers",[MissingWorkers]))
+	    log:log(?logger_info(info,"Missing  workers",[MissingWorkers]))
     end,
     case MissingRest of
 	[]->
 	    ok;
 	MissingRest->
 	    deploy(MissingRest),
-	    ok=logger_infra:log(?logger_info(ticket,"Missing  rest",[MissingRest]))
+	    log:log(?logger_info(info,"Missing  Rest",[MissingRest]))
     end,
     ok.
 
 check_pods_status({InstanceId,DepId,PodList})->
 
-    PingR=[net_adm:ping(PodNode)||{PodNode,PodDir,PodId}<-PodList],
-    case [pang||pang<-PingR] of
+    PingR=[{net_adm:ping(PodNode),PodNode}||{PodNode,PodDir,PodId}<-PodList],
+    case [PodNode||{pang,PodNode}<-PingR] of
 	[]->
 	    ok;
-	_ ->
+	ErrorList->
 	    {atomic,ok}=db_deploy_state:delete(InstanceId),
-	    ok=logger_infra:log(?logger_info(ticket,"db_deploy_state:delete",[InstanceId])),
+	    log:log(?logger_info(ticket,"node_not_available, delete instance",[ErrorList,InstanceId])),
 	    {atomic,ok}
     end.
     
@@ -108,8 +108,8 @@ deploy([{DepId,PodSpecs}|T],Acc)->
     {ok,DepInstanceId}=db_deploy_state:create(DepId,[]),
     NewAcc=case start_pod(PodSpecs,HostId,DepInstanceId,[]) of
 	       {error,Reason}->
-		   ok=logger_infra:log(?logger_info(ticket,"db_deploy_state:delete",[DepInstanceId,Reason])),
-		   db_deploy_state:delete(DepInstanceId),		   
+		   log:log(?logger_info(ticket,"db_deploy_state:delete",[DepInstanceId,Reason])),
+		   {atomic,ok}=db_deploy_state:delete(DepInstanceId),		   
 		   [{error,Reason}|Acc];
 	       {ok,PodAppInfo}->
 		   [{ok,PodAppInfo}|Acc]
@@ -140,16 +140,18 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 				 {error,Reason};
 			     {ok,PodAppInfo}->
 			%	 io:format("HostId,PodAppInfo ~p~n",[{HostId,PodAppInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
-			%	 io:format("DepInstanceId  ~p~n",[{DepInstanceId,PodNode,PodDir,PodId,?MODULE,?FUNCTION_NAME,?LINE}]),
+				 io:format("DepInstanceId  ~0p~n",[{DepInstanceId,PodNode,PodDir,PodId,?MODULE,?FUNCTION_NAME,?LINE}]),
 				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
-				 ok=logger_infra:log(?logger_info(info,"db_deploy_state:add_pod_status",[[DepInstanceId,{PodNode,PodDir,PodId}]])),
+				 log:log(?logger_info(info,"db_deploy_state:add_pod_status",[DepInstanceId,{PodNode,PodDir,PodId}])),
 				 {ok,PodAppInfo}
 				     
 			 end
 		 end,
     start_pod(T,HostId,DepInstanceId,[LoadStartRes|Acc]).
 	      
-    
+%2021-12-30 13:3:34  aa@c100 info  " db_deploy_state:add_pod_status " {controller_desired_state,start_pod,145}  
+%{[1640865797102818,c100_controller_1640865797103@c100,[104,111,115,116,51,46,97,112,112,108,105,99,97,116,105,111,110,115,47,99,49,48,48,95,99,111,110,116,114,111,108,108,101,114,95,49,54,52,48,56,54,53,55,57,55,49,48,51,46,112,111,100],{[99,111,110,116,114,111,108,108,101,114],[49,46,48,46,48]}]} new
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc

@@ -54,8 +54,9 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    ok=logger_infra:log(?logger_info(info,"server started",[])),
+   
     spawn(fun()->call_desired_state() end),
+    log:log(?logger_info(info,"server started",[])),
     {ok, #state{}}.
 
 %% --------------------------------------------------------------------
@@ -81,7 +82,8 @@ handle_call({stop}, _From, State) ->
     {stop, normal, shutdown_ok, State};
 
 handle_call(Request, From, State) ->
-    Reply = {unmatched_signal,?MODULE,Request,From},
+    log:log(?logger_info(ticket,"unmatched call",[Request,From])),
+    Reply = {"unmatched call",[Request,From]},
     {reply, Reply, State}.
 
 %% --------------------------------------------------------------------
@@ -100,7 +102,7 @@ handle_cast({desired_state}, State) ->
     {noreply, State};
 
 handle_cast(Msg, State) ->
-    io:format("unmatched match cast ~p~n",[{Msg,?MODULE,?LINE}]),
+    log:log(?logger_info(ticket,"unmatched cast",[Msg])),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -110,13 +112,9 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info({Id, desired_state_ret,ResultList}, State) ->
-    io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,
-		      Id,desired_state_ret,ResultList}]), 
-    {noreply, State};
 
 handle_info(Info, State) ->
-    io:format("unmatched handle_info ~p~n",[{Info,?MODULE,?LINE}]), 
+    log:log(?logger_info(ticket,"unmatched Info",[Info])),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -146,8 +144,7 @@ call_desired_state()->
 	false->
 	    ok;
 	true->
-	    Result=rpc:call(node(),controller_desired_state,start,[],1*60*1000),
-	    io:format("~p~n",[{time(),node(),Result,?MODULE,?FUNCTION_NAME,?LINE}])
+	    Result=rpc:call(node(),controller_desired_state,start,[],3*60*1000)	
     end,
     rpc:cast(node(),controller,desired_state,[]).
 		  

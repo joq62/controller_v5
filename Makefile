@@ -5,7 +5,7 @@ all:
 	rm -rf  *~ */*~  erl_cra*;
 #	common
 #	cp ../common/src/*.app ebin;
-	erlc -I include -o ebin ../../common/src/*.erl;
+	erlc -I ../../include -I include -o ebin ../../common/src/*.erl;
 #	app
 	cp src/*.app ebin;
 	erlc -I include -I ../../include -o ebin src/*.erl;
@@ -17,7 +17,7 @@ unit_test:
 	mkdir test_ebin;
 #	common
 #	cp ../common/src/*.app ebin;
-	erlc -D unit_test -o ebin ../../common/src/*.erl;
+	erlc -I ../../include -D unit_test -o ebin ../../common/src/*.erl;
 #	bully
 	cp ../bully/src/*.app ebin;
 	erlc -D unit_test -I ../../include -o ebin ../bully/src/*.erl;
