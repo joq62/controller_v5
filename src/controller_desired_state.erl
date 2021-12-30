@@ -55,6 +55,7 @@ start()->
     ok.
 
 check_pods_status({InstanceId,DepId,PodList})->
+
     PingR=[net_adm:ping(PodNode)||{PodNode,PodDir,PodId}<-PodList],
     case [pang||pang<-PingR] of
 	[]->
