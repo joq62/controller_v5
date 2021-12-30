@@ -29,22 +29,23 @@ start()->
     WantedState=[{DepId,db_deployment:pod_specs(DepId)}||DepId<-AllDepIds],
     io:format("WantedState ~p~n",[{WantedState,?MODULE,?FUNCTION_NAME,?LINE}]),
     AllDeployStates=lists:append([db_deploy_state:deployment(Id)||Id<-db_deploy_state:deploy_id()]),
-    
+    io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
 					  false=:=lists:keymember(DepId,2,AllDeployStates)],
+    io:format("MissingDeployments ~p~n",[{MissingDeployments,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingControllers=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
 					  lists:member({"controller","1.0.0"},PodSpecs)],
     io:format("MissingControllers ~p~n",[{MissingControllers,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingWorkers=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
 					  lists:member({"worker","1.0.0"},PodSpecs)],
-    io:format("MissingWorkers ~p~n",[{MissingWorkers,?MODULE,?FUNCTION_NAME,?LINE}]),
-    MissingRest=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
-				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
-				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
-    io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  io:format("MissingWorkers ~p~n",[{MissingWorkers,?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  MissingRest=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
+%				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
+%				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
+ %   io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
     R1=deploy(MissingControllers),
-    R2=deploy(MissingWorkers),
-    R3=deploy(MissingRest),
+  %  R2=deploy(MissingWorkers),
+   % R3=deploy(MissingRest),
   
     ok.
 
@@ -99,7 +100,7 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 				 {error,Reason};
 			     {ok,PodAppInfo}->
 				 io:format("HostId,PodAppInfo ~p~n",[{HostId,PodAppInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
-				 db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
+				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
 				 {ok,PodAppInfo}
 				     
 			 end
