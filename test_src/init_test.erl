@@ -36,7 +36,7 @@ start()->
 %    ok=pass1(),
 %    io:format("~p~n",[{"Stop pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-%    io:format("~p~n",[{"Start pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("~p~n",[{"Start pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
     ok=pass2(),
     io:format("~p~n",[{"Stop pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
@@ -79,9 +79,57 @@ start()->
 %% Returns: non
 %% -------------------------------------------------------------------
 pass2()->
-    
-
+    case sd:get(dbase_infra) of
+	[]->
+	    io:format("{error = ~p~n",[{error,[],?MODULE,?FUNCTION_NAME,?LINE}]),
+	    timer:sleep(3000),
+	    pass2();
+	[N|_]->
+	    Ids=rpc:call(N,db_logger,ids,[],3000),
+	    case Ids of
+		[]->
+		    io:format("{No Ids = ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+		    timer:sleep(3000),
+		    pass2();
+		Ids->
+		    OldNew=q_sort:sort(Ids),
+		    Latest=lists:last(OldNew),
+		%    SortedIds=lists:reverse(q_sort:sort(Ids)),
+		   % io:format("SortedIds = ~p~n",[{SortedIds,?MODULE,?FUNCTION_NAME,?LINE}]),
+		    X=[{Id,rpc:cast(N,db_logger,nice_print,[Id])}||Id<-OldNew],
+		 %   io:format("{X = ~p~n",[{X,?MODULE,?FUNCTION_NAME,?LINE}]),
+		    spawn(fun()->print_log(Latest) end)
+	    end
+    end,   
     ok.
+%1640895289526372,
+%1640895289488269,
+%1640895277391540
+
+print_log(Latest)->
+    NewLatest=case sd:get(dbase_infra) of
+		  []->
+		      io:format("{error, = ~p~n",[{error,[],?MODULE,?FUNCTION_NAME,?LINE}]),
+		      Latest;
+		  [N|_]->
+		      Ids=rpc:call(N,db_logger,ids,[],3000),
+		      case Ids of
+			  []->
+			      io:format("{No Ids = ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+			      Latest;
+			  Ids->
+			      OldNew=q_sort:sort(Ids),
+			      XLatest=lists:last(OldNew),
+			   %   SortedIds=lists:reverse(q_sort:sort(Ids)),
+			   %   io:format("SortedIds = ~p~n",[{SortedIds,?MODULE,?FUNCTION_NAME,?LINE}]),
+			      [rpc:cast(N,db_logger,nice_print,[Id])||Id<-OldNew,
+									   Id>Latest],
+			      XLatest
+		      end
+	      end,   
+    timer:sleep(2000),
+    print_log(NewLatest).
+		     
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc

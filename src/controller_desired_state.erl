@@ -139,8 +139,6 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 			     {error,Reason}->
 				 {error,Reason};
 			     {ok,PodAppInfo}->
-			%	 io:format("HostId,PodAppInfo ~p~n",[{HostId,PodAppInfo,?MODULE,?FUNCTION_NAME,?LINE}]),
-				 io:format("DepInstanceId  ~0p~n",[{DepInstanceId,PodNode,PodDir,PodId,?MODULE,?FUNCTION_NAME,?LINE}]),
 				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
 				 log:log(?logger_info(info,"db_deploy_state:add_pod_status",[DepInstanceId,{PodNode,PodDir,PodId}])),
 				 {ok,PodAppInfo}
@@ -149,9 +147,6 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 		 end,
     start_pod(T,HostId,DepInstanceId,[LoadStartRes|Acc]).
 	      
-%2021-12-30 13:3:34  aa@c100 info  " db_deploy_state:add_pod_status " {controller_desired_state,start_pod,145}  
-%{[1640865797102818,c100_controller_1640865797103@c100,[104,111,115,116,51,46,97,112,112,108,105,99,97,116,105,111,110,115,47,99,49,48,48,95,99,111,110,116,114,111,108,108,101,114,95,49,54,52,48,56,54,53,55,57,55,49,48,51,46,112,111,100],{[99,111,110,116,114,111,108,108,101,114],[49,46,48,46,48]}]} new
-
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
