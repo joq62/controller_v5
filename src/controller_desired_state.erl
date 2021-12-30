@@ -32,7 +32,6 @@ start()->
    % {InstanceId,DepId,[{PodNode,PodDir,PodId}]}
     
     AllDeployStates=db_deploy_state:read_all(),			 
-  %  AllDeployStates=lists:append([db_deploy_state:deployment(Id)||Id<-db_deploy_state:deploy_id()]),
     io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
 					  false=:=lists:keymember(DepId,2,AllDeployStates)],
@@ -42,14 +41,14 @@ start()->
     io:format("MissingControllers ~p~n",[{MissingControllers,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingWorkers=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
 					  lists:member({"worker","1.0.0"},PodSpecs)],
-  %  io:format("MissingWorkers ~p~n",[{MissingWorkers,?MODULE,?FUNCTION_NAME,?LINE}]),
-  %  MissingRest=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
-%				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
-%				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
- %   io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("MissingWorkers ~p~n",[{MissingWorkers,?MODULE,?FUNCTION_NAME,?LINE}]),
+    MissingRest=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
+				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
+				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
+    io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
     R1=deploy(MissingControllers),
-  %  R2=deploy(MissingWorkers),
-   % R3=deploy(MissingRest),
+    R2=deploy(MissingWorkers),
+    R3=deploy(MissingRest),
   
     ok.
 
