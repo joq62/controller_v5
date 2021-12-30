@@ -30,7 +30,9 @@ start()->
     io:format("WantedState ~p~n",[{WantedState,?MODULE,?FUNCTION_NAME,?LINE}]),
     
    % {InstanceId,DepId,[{PodNode,PodDir,PodId}]}
-    
+    X=[check_pods_status(Status)||Status<-db_deploy_state:read_all()],	
+    io:format("check_pods_status ~p~n",[{X,?MODULE,?FUNCTION_NAME,?LINE}]),
+    timer:sleep(500),    
     AllDeployStates=db_deploy_state:read_all(),			 
     io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
@@ -51,6 +53,16 @@ start()->
     R3=deploy(MissingRest),
   
     ok.
+
+check_pods_status({InstanceId,DepId,PodList})->
+    PingR=[net_adm:ping(PodNode)||{PodNode,PodDir,PodId}<-PodList],
+    case [pang||pang<-PingR] of
+	[]->
+	    ok;
+	_ ->
+	    db_deploy_state:delete(InstanceId)
+    end.
+    
 
 %% --------------------------------------------------------------------
 %% Function:start/0 
