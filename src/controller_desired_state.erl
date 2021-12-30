@@ -64,8 +64,15 @@ deploy([{DepId,PodSpecs}|T],Acc)->
 		   XId
 	   end,
     DepInstanceId=db_deploy_state:create(DepId,[]),
-    R=start_pod(PodSpecs,HostId,DepInstanceId,[]),
-    deploy(T,[R|Acc]).
+    NewAcc=case start_pod(PodSpecs,HostId,DepInstanceId,[]) of
+	       {error,Reason}->
+		   db_deploy_state:delete(DepInstanceId),		   
+		   [{error,Reason}|Acc];
+	       {ok,PodAppInfo}->
+		   [{ok,PodAppInfo}|Acc]
+	   end,
+    
+    deploy(T,NewAcc).
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -73,7 +80,12 @@ deploy([{DepId,PodSpecs}|T],Acc)->
 %% --------------------------------------------------------------------
 
 start_pod([],HostId,DepInstanceId,StartRes)->
-    StartRes;
+    case [{error,Reason}||{error,Reason}<-StartRes] of
+	[]->
+	    {ok,[PodAppInfo||{ok,PodAppInfo}<-StartRes]};
+	Reason->
+	     {error,Reason}
+    end;
 start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
     LoadStartRes=case pod:start_pod(PodId,HostId) of
 		     {error,Reason}->
