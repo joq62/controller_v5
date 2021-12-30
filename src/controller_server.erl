@@ -15,6 +15,7 @@
 %% Include files
 %% --------------------------------------------------------------------
 -include("controller.hrl").
+-include("logger_infra.hrl").
 %% --------------------------------------------------------------------
 
 %% External exports
@@ -53,6 +54,7 @@ schedule()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
+    ok=logger_infra:log(?logger_info(info,"server started",[])),
     spawn(fun()->call_desired_state() end),
     {ok, #state{}}.
 

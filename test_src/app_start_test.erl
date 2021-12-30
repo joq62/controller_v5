@@ -56,6 +56,7 @@ setup()->
     ok=application:start(sd),
     ok=application:start(bully),
     ok=application:start(dbase_infra),
+    ok=application:start(logger_infra),
     
     Ids=lists:sort(db_host:ids()),
     Ids=[{"c100","host1"},
