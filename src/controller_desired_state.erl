@@ -15,8 +15,10 @@
 %%
 
 %% --------------------------------------------------------------------
--compile(export_all).
-
+%-compile(export_all).
+-export([
+	 start/0
+	]).
 
 %% ====================================================================
 %% External functions
@@ -30,7 +32,7 @@ start()->
    % io:format("WantedState ~p~n",[{WantedState,?MODULE,?FUNCTION_NAME,?LINE}]),
     
    % {InstanceId,DepId,[{PodNode,PodDir,PodId}]}
-    X=[check_pods_status(Status)||Status<-db_deploy_state:read_all()],	
+    [check_pods_status(Status)||Status<-db_deploy_state:read_all()],	
   %  io:format("check_pods_status ~p~n",[{X,?MODULE,?FUNCTION_NAME,?LINE}]),
     timer:sleep(500),    
     AllDeployStates=db_deploy_state:read_all(),			 
@@ -71,9 +73,9 @@ start()->
     end,
     ok.
 
-check_pods_status({InstanceId,DepId,PodList})->
+check_pods_status({InstanceId,_DepId,PodList})->
 
-    PingR=[{net_adm:ping(PodNode),PodNode}||{PodNode,PodDir,PodId}<-PodList],
+    PingR=[{net_adm:ping(PodNode),PodNode}||{PodNode,_PodDir,_PodId}<-PodList],
     case [PodNode||{pang,PodNode}<-PingR] of
 	[]->
 	    ok;
@@ -82,12 +84,7 @@ check_pods_status({InstanceId,DepId,PodList})->
 	    log:log(?logger_info(ticket,"node_not_available, delete instance",[ErrorList,InstanceId])),
 	    {atomic,ok}
     end.
-    
-% L1=?logger_info(alert,"test1",[]),
-%    L2=?logger_info(alert,"test2",[23,76]),
- %   L3=?logger_info(ticket,"test3",[]),
-  %  L4=?logger_info(info,"server started",[]),
- %ok=logger_infra:log(L1),
+
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -122,7 +119,7 @@ deploy([{DepId,PodSpecs}|T],Acc)->
 %% Returns: non
 %% --------------------------------------------------------------------
 
-start_pod([],HostId,DepInstanceId,StartRes)->
+start_pod([],_HostId,_DepInstanceId,StartRes)->
     case [{error,Reason}||{error,Reason}<-StartRes] of
 	[]->
 	    {ok,[PodAppInfo||{ok,PodAppInfo}<-StartRes]};
@@ -157,7 +154,8 @@ random_host()->
     StartedNodes=lib_status:node_started(),
     N1=length_list(StartedNodes),
     N2=rand:uniform(N1),
-    HostId=lists:nth(N2,StartedNodes).
+    HostId=lists:nth(N2,StartedNodes),
+    HostId.
   
 
 length_list(L)->

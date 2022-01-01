@@ -38,8 +38,7 @@
 %% ====================================================================
 
 
-schedule()->
-    gen_server:cast(?MODULE, {schedule}).
+
 
 %% ====================================================================
 %% Server functions
@@ -144,7 +143,7 @@ call_desired_state()->
 	false->
 	    ok;
 	true->
-	    Result=rpc:call(node(),controller_desired_state,start,[],3*60*1000)	
+	    rpc:call(node(),controller_desired_state,start,[],3*60*1000)	
     end,
     rpc:cast(node(),controller,desired_state,[]).
 		  

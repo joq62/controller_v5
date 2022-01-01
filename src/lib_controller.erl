@@ -18,6 +18,7 @@
 -export([
 	 load_configs/0,
 	 load_configs/1,
+	 delete_configs/0,
 	 connect/0,
 	 start_needed_apps/0,
 	 initiate_dbase/0,
@@ -39,8 +40,8 @@ load_configs()->
     os:cmd("git clone "++Path),
     ok.
 delete_configs()->
-    {TestDir,TestPath}=?TestConfig,
-    {Dir,Path}=?Config,
+    {TestDir,_TestPath}=?TestConfig,
+    {Dir,_Path}=?Config,
     os:cmd("rm -rf "++TestDir),
     os:cmd("rm -rf "++Dir),
     ok.
@@ -103,41 +104,28 @@ initiate_dbase(Root)->
     RunningNodes=lists:delete(node(),connect:start(ControllerNodesSpecFile)),
     NodesMnesiaStarted=[Node||Node<-RunningNodes,
 			      yes=:=rpc:call(Node,mnesia,system_info,[is_running],1000)],
-   % io:format("NodesMnesiaStarted ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),NodesMnesiaStarted}]),
     DbaseSpecs=dbase_infra:get_dbase_specs(),
-    io:format("DbaseSpecs ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,node(),DbaseSpecs}]),
-    case NodesMnesiaStarted of
-	[]-> % initial start
-	    DbaseSpecs_2=[{Module,filename:join(Root,Dir),Directive}||{Module,Dir,Directive}<-DbaseSpecs],
-	    LoadResult=[{Module,dbase_infra:load_from_file(Module,Dir,Directive)}||{Module,Dir,Directive}<-DbaseSpecs_2],
-	    case [{Module,R}||{Module,R}<-LoadResult,R/=ok] of
-		[]->
-		    ok;
-		ReasonList->
-		    {error,ReasonList}
-	    end;
-	[Node0|_]->
-	    io:format("Node0 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,Node0}]),
-	    ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
-	    timer:sleep(500),
-	    _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseSpecs],
-	    
-	    timer:sleep(500),
-	    ok
-    end,
-    ok.
-
-
-init_dbase_service(Node,{Module,Source,Directive})->
-    LoadResult=[R||R<-rpc:call(Node,dbase_infra,load_from_file,[Module,Source,Directive],5*1000),
-			   R/=ok],
-    Result=case LoadResult of
-	       []-> %ok
-		   {ok,[Node,Module]};
-	       Reason ->
-		   {error,[Node,Module,Reason]}
+    Result=case NodesMnesiaStarted of
+	       []-> % initial start
+		   DbaseSpecs_2=[{Module,filename:join(Root,Dir),Directive}||{Module,Dir,Directive}<-DbaseSpecs],
+		   LoadResult=[{Module,dbase_infra:load_from_file(Module,Dir,Directive)}||{Module,Dir,Directive}<-DbaseSpecs_2],
+		   case [{Module,R}||{Module,R}<-LoadResult,R/=ok] of
+		       []->
+			   ok;
+		       ReasonList->
+			   {error,ReasonList}
+		   end;
+	       [Node0|_]->
+		   ok=rpc:call(node(),dbase_infra,add_dynamic,[Node0],3*1000),
+		   timer:sleep(500),
+		   _R=[rpc:call(node(),dbase_infra,dynamic_load_table,[node(),Module],3*1000)||{Module,_}<-DbaseSpecs],
+		   
+		   timer:sleep(500),
+		   ok
 	   end,
     Result.
+
+
 %% --------------------------------------------------------------------
 %% Function:start
 %% Description: List of test cases 
