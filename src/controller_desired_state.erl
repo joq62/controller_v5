@@ -55,16 +55,17 @@ start()->
 	[]->
 	    ok;
 	MissingControllers->
-	    deploy(MissingControllers),
 	    log:log(?logger_info(info,"Missing  controllers",[MissingControllers])),
+	    deploy(MissingControllers),
+	   
 	    ok
     end,
     case MissingWorkers of
 	[]->
 	    ok;
 	MissingWorkers->
-	    deploy(MissingWorkers),
 	    log:log(?logger_info(info,"Missing  workers",[MissingWorkers])),
+	    deploy(MissingWorkers),	   
 	    ok
 		
     end,
@@ -72,8 +73,8 @@ start()->
 	[]->
 	    ok;
 	MissingRest->
-	    deploy(MissingRest),
-	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
+%	    deploy(MissingRest),
+%	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
 	    ok
     end,
     ok.
