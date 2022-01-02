@@ -79,17 +79,30 @@ start()->
     ok.
 
 check_pods_status({InstanceId,_DepId,PodList})->
-
-    PingR=[{net_adm:ping(PodNode),PodNode}||{PodNode,_PodDir,_PodId}<-PodList],
-    case [PodNode||{pang,PodNode}<-PingR] of
+    PingR=[{net_adm:ping(PodNode),PodNode,PodDir,PodId}||{PodNode,PodDir,PodId}<-PodList],
+    case [{PodNode,PodDir,PodId}||{pang,PodNode,PodDir,PodId}<-PingR] of
 	[]->
 	    ok;
 	ErrorList->
+	    % Stop running pods and delete pod dirs
+	    % Nodes is down - need to find out a node on the same host
+	    AllPodInfo=db_deploy_state:pods(InstanceId), %[{PodNode,PodDir,PodId},,,]
+	    HostNodes=[db_host:node(Id)||Id<-db_host:ids()],
+	    %Stop running pods in 
+	    [rpc:call(PodNode,init,stop,[],5*1000)||{PodNode,_,_}<-AllPodInfo],
+	    delete_dirs(HostNodes,AllPodInfo),
+	    
 	    {atomic,ok}=db_deploy_state:delete(InstanceId),
 	%    io:format("node_not_available, delete instance ~p~n",[{ErrorList,InstanceId,?MODULE,?FUNCTION_NAME,?LINE}]),
 	    log:log(?logger_info(ticket,"node_not_available, delete instance",[ErrorList,InstanceId])),
 	    {atomic,ok}
     end.
+delete_dirs([],_AllPodInfo)->
+    ok;
+delete_dirs([HostNode|T],AllPodInfo)->
+    [rpc:call(HostNode,os,cmd,["rm -rf "++PodDir],5*1000)||{_,PodDir,_}<-AllPodInfo],
+    timer:sleep(500),
+    delete_dirs(T,AllPodInfo).
 
 %% --------------------------------------------------------------------
 %% Function:start/0 
@@ -101,6 +114,7 @@ deploy(MissingDepIdPodSpecs)->
 deploy([],StartRes)->
    StartRes;
 deploy([{DepId,PodSpecs}|T],Acc)->
+    log:log(?logger_info(info,"deploy,DepId,PodSpecs ",[DepId,PodSpecs])),
     HostId=case db_deployment:affinity(DepId) of
 	       []->
 		   random_host();
