@@ -72,8 +72,8 @@ start()->
 	[]->
 	    ok;
 	MissingRest->
-%	    deploy(MissingRest),
-%	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
+	    deploy(MissingRest),
+	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
 	    ok
     end,
     ok.
