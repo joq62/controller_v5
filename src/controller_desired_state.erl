@@ -68,14 +68,14 @@ start()->
 	    ok
 		
     end,
-    case MissingRest of
-	[]->
-	    ok;
-	MissingRest->
-	    deploy(MissingRest),
-	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
-	    ok
-    end,
+%    case MissingRest of
+%	[]->
+%	    ok;
+%	MissingRest->
+%	    deploy(MissingRest),
+%	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
+%	    ok
+%    end,
     ok.
 
 check_pods_status({InstanceId,_DepId,PodList})->
