@@ -36,7 +36,7 @@ start()->
   %  io:format("check_pods_status ~p~n",[{X,?MODULE,?FUNCTION_NAME,?LINE}]),
     timer:sleep(500),    
     AllDeployStates=db_deploy_state:read_all(),		
-    log:log(?logger_info(info,"AllDeployStates = ",[AllDeployStates])), 
+%    log:log(?logger_info(info,"AllDeployStates = ",[AllDeployStates])), 
    % io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
 					  false=:=lists:keymember(DepId,2,AllDeployStates)],
