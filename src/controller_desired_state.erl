@@ -37,7 +37,7 @@ start()->
     timer:sleep(500),    
     AllDeployStates=db_deploy_state:read_all(),		
     log:log(?logger_info(info,"AllDeployStates = ",[AllDeployStates])), 
-  %  io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
+   % io:format("AllDeployStates ~p~n",[{AllDeployStates,?MODULE,?FUNCTION_NAME,?LINE}]),
     MissingDeployments=[{DepId,PodSpecs}||{DepId,PodSpecs}<-WantedState,
 					  false=:=lists:keymember(DepId,2,AllDeployStates)],
   %  io:format("MissingDeployments ~p~n",[{MissingDeployments,?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -50,35 +50,31 @@ start()->
     MissingRest=[{DepId,PodSpecs}||{DepId,PodSpecs}<-MissingDeployments,
 				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
 				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
- %   io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
-    case MissingDeployments of
-	[]->
-	    ok;
-	MissingDeployments->
-	    deploy(MissingDeployments),
-	    log:log(?logger_info(info,"MissingDeployments = ",[MissingDeployments]))
-    end,
-
+  %  io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
     case MissingControllers of
 	[]->
 	    ok;
 	MissingControllers->
 	    deploy(MissingControllers),
-	    log:log(?logger_info(info,"Missing  controllers",[MissingControllers]))
+	    log:log(?logger_info(info,"Missing  controllers",[MissingControllers])),
+	    ok
     end,
     case MissingWorkers of
 	[]->
 	    ok;
 	MissingWorkers->
 	    deploy(MissingWorkers),
-	    log:log(?logger_info(info,"Missing  workers",[MissingWorkers]))
+	    log:log(?logger_info(info,"Missing  workers",[MissingWorkers])),
+	    ok
+		
     end,
     case MissingRest of
 	[]->
 	    ok;
 	MissingRest->
 	    deploy(MissingRest),
-	    log:log(?logger_info(info,"Missing  Rest",[MissingRest]))
+	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
+	    ok
     end,
     ok.
 
@@ -90,6 +86,7 @@ check_pods_status({InstanceId,_DepId,PodList})->
 	    ok;
 	ErrorList->
 	    {atomic,ok}=db_deploy_state:delete(InstanceId),
+	%    io:format("node_not_available, delete instance ~p~n",[{ErrorList,InstanceId,?MODULE,?FUNCTION_NAME,?LINE}]),
 	    log:log(?logger_info(ticket,"node_not_available, delete instance",[ErrorList,InstanceId])),
 	    {atomic,ok}
     end.
@@ -114,6 +111,7 @@ deploy([{DepId,PodSpecs}|T],Acc)->
     {ok,DepInstanceId}=db_deploy_state:create(DepId,[]),
     NewAcc=case start_pod(PodSpecs,HostId,DepInstanceId,[]) of
 	       {error,Reason}->
+	%	   io:format("ticket,db_deploy_state:delete ~p~n",[{DepInstanceId,Reason,?MODULE,?FUNCTION_NAME,?LINE}]),
 		   log:log(?logger_info(ticket,"db_deploy_state:delete",[DepInstanceId,Reason])),
 		   {atomic,ok}=db_deploy_state:delete(DepInstanceId),		   
 		   [{error,Reason}|Acc];
@@ -146,6 +144,7 @@ start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
 				 {error,Reason};
 			     {ok,PodAppInfo}->
 				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
+	%			 io:format("info,add_pod_status  ~p~n",[{DepInstanceId,{PodNode,PodDir,PodId},?MODULE,?FUNCTION_NAME,?LINE}]),
 				 log:log(?logger_info(info,"db_deploy_state:add_pod_status",[DepInstanceId,{PodNode,PodDir,PodId}])),
 				 {ok,PodAppInfo}
 				     

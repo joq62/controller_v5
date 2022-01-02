@@ -32,12 +32,16 @@ start()->
     ok=setup(),
   %  io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
+%    io:format("~p~n",[{"Start pass0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass0(),
+    io:format("~p~n",[{"Stop pass0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+
 %    io:format("~p~n",[{"Start pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 %    ok=pass1(),
 %    io:format("~p~n",[{"Stop pass1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass2(),
+ %   io:format("~p~n",[{"Start pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   ok=pass2(),
     io:format("~p~n",[{"Stop pass2()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
  %   io:format("~p~n",[{"Start add_node()",?MODULE,?FUNCTION_NAME,?LINE}]),
@@ -71,8 +75,16 @@ start()->
     io:format("------>"++atom_to_list(?MODULE)++" ENDED SUCCESSFUL ---------"),
     ok.
 
+    
+%% --------------------------------------------------------------------
+%% Function:start/0 
+%% Description: Initiate the eunit tests, set upp needed processes etc
+%% Returns: non
+%% -------------------------------------------------------------------
+pass0()->
 
-
+    ok.
+    
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
