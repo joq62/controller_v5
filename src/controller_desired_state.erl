@@ -86,11 +86,11 @@ check_pods_status({InstanceId,_DepId,PodList})->
 	ErrorList->
 	    % Stop running pods and delete pod dirs
 	    % Nodes is down - need to find out a node on the same host
-	  %  AllPodInfo=db_deploy_state:pods(InstanceId), %[{PodNode,PodDir,PodId},,,]
-	  %  HostNodes=[db_host:node(Id)||Id<-db_host:ids()],
+	    AllPodInfo=db_deploy_state:pods(InstanceId), %[{PodNode,PodDir,PodId},,,]
+	    HostNodes=[db_host:node(Id)||Id<-db_host:ids()],
 	    %Stop running pods in 
-	  %  [rpc:call(PodNode,init,stop,[],5*1000)||{PodNode,_,_}<-AllPodInfo],
-	  %  delete_dirs(HostNodes,AllPodInfo),
+	    [rpc:call(PodNode,init,stop,[],5*1000)||{PodNode,_,_}<-AllPodInfo],
+	    delete_dirs(HostNodes,AllPodInfo),
 	    
 	    {atomic,ok}=db_deploy_state:delete(InstanceId),
 	%    io:format("node_not_available, delete instance ~p~n",[{ErrorList,InstanceId,?MODULE,?FUNCTION_NAME,?LINE}]),
