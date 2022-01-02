@@ -50,6 +50,14 @@ start()->
 				   false=:=lists:member({DepId,PodSpecs},MissingControllers),
 				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
  %   io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
+    case MissingDeployments of
+	[]->
+	    ok;
+	MissingDeployments->
+	    deploy(MissingDeployments),
+	    log:log(?logger_info(info,"MissingDeployments = ",[MissingDeployments]))
+    end,
+
     case MissingControllers of
 	[]->
 	    ok;
