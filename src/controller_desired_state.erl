@@ -127,7 +127,7 @@ deploy([{DepId,PodSpecs}|T],Acc)->
     NewAcc=case start_pod(PodSpecs,HostId,DepInstanceId,[]) of
 	       {error,Reason}->
 	%	   io:format("ticket,db_deploy_state:delete ~p~n",[{DepInstanceId,Reason,?MODULE,?FUNCTION_NAME,?LINE}]),
-		   log:log(?logger_info(ticket,"db_deploy_state:delete",[DepInstanceId,Reason])),
+		   log:log(?logger_info(ticket,"error, db_deploy_state:delete",[DepInstanceId,Reason])),
 		   {atomic,ok}=db_deploy_state:delete(DepInstanceId),		   
 		   [{error,Reason}|Acc];
 	       {ok,PodAppInfo}->
