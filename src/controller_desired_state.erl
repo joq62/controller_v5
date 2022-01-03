@@ -151,16 +151,18 @@ start_pod([],_HostId,_DepInstanceId,StartRes)->
 start_pod([PodId|T],HostId,DepInstanceId,Acc) ->
     LoadStartRes=case pod:start_pod(PodId,HostId) of
 		     {error,Reason}->
+			 log:log(?logger_info(info,"error",[PodId,HostId,Reason])),
 			 {error,Reason};
 		     {ok,PodNode,PodDir}->
 			 AppIds=db_pods:application(PodId),
 			 case pod:load_start_apps(AppIds,PodId,PodNode,PodDir) of
 			     {error,Reason}->
+				 log:log(?logger_info(info,"error",[PodId,HostId,Reason])),
 				 {error,Reason};
 			     {ok,PodAppInfo}->
 				 {atomic,ok}=db_deploy_state:add_pod_status(DepInstanceId,{PodNode,PodDir,PodId}),
 	%			 io:format("info,add_pod_status  ~p~n",[{DepInstanceId,{PodNode,PodDir,PodId},?MODULE,?FUNCTION_NAME,?LINE}]),
-				 log:log(?logger_info(info,"db_deploy_state:add_pod_status",[DepInstanceId,{PodNode,PodDir,PodId}])),
+				 log:log(?logger_info(info,"Succesful Started Pod",[DepInstanceId,{PodNode,PodDir,PodId}])),
 				 {ok,PodAppInfo}
 				     
 			 end
