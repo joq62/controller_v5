@@ -143,7 +143,13 @@ call_desired_state()->
 	false->
 	    ok;
 	true->
-	    rpc:call(node(),controller_desired_state,start,[],3*60*1000)	
+	    Result=rpc:call(node(),controller_desired_state,start,[],3*60*1000),
+	    case Result of
+		{[],[],[]}->
+		    log:log(?logger_info(info,"Desired State",[]));
+		Result ->
+		    log:log(?logger_info(info,"Missing",[Result]))
+	    end
     end,
     rpc:cast(node(),controller,desired_state,[]).
 		  

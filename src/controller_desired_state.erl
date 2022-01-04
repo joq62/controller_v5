@@ -52,13 +52,12 @@ start()->
 				   false=:=lists:member({DepId,PodSpecs},MissingWorkers)],
   %  io:format("MissingRest ~p~n",[{MissingRest,?MODULE,?FUNCTION_NAME,?LINE}]),
     case MissingControllers of
-	[]->
-	    ok;
-	MissingControllers->
-	    log:log(?logger_info(info,"Missing  controllers",[MissingControllers])),
-	    deploy(MissingControllers),
-	   
-	    ok
+	   []->
+	       ok;
+	   MissingControllers->
+	       log:log(?logger_info(info,"Missing  controllers",[MissingControllers])),
+	       deploy(MissingControllers),
+	       ok
     end,
     case MissingWorkers of
 	[]->
@@ -73,11 +72,11 @@ start()->
 	[]->
 	    ok;
 	MissingRest->
-%	    deploy(MissingRest),
-%	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
+	    deploy(MissingRest),
+	    log:log(?logger_info(info,"Missing  Rest",[MissingRest])),
 	    ok
     end,
-    ok.
+    {MissingControllers,MissingWorkers,MissingRest}.
 
 check_pods_status({InstanceId,_DepId,PodList})->
     PingR=[{net_adm:ping(PodNode),PodNode,PodDir,PodId}||{PodNode,PodDir,PodId}<-PodList],
