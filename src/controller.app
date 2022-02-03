@@ -2,15 +2,13 @@
 %% application.
 {application, controller,
 [{description, "Controller application and cluster" },
-{vsn, "0.1.0" },
+{vsn, "1.0.0" },
 {modules, 
-	  [controller,controller_sup,controller_server]},
+	  [controller,lib_controller,controller_sup,controller_app]},
 {registered,[controller]},
 {applications, [kernel,stdlib]},
 {mod, {controller_app,[]}},
 {start_phases, []},
 {git_path,"https://github.com/joq62/controller.git"},
-{env,[{service_catalog,[{dir,"service_catalog"},
-	                {filename,"service.catalog"},
-			{git_path,"https://github.com/joq62/service_catalog.git"}]}]}
+{constraints,[]}
 ]}.

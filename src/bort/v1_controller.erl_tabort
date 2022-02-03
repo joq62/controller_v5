@@ -1,17 +1,8 @@
-%% Author: joqerlang
-%% Created: 2021-11-18 
-%% Connect/keep connections to other nodes
-%% clean up of computer (removes all applications but keeps log file
-%% git loads or remove an application ,loadand start application
-%%  
-%% Starts either as controller or worker node, given in application env 
-%% Controller:
-%%   git clone and starts 
-%% 
+%% Author: uabjle
+%% Created: 10 dec 2012
 %% Description: TODO: Add description to application_org
-%% 
--module(connect).
- 
+-module(controller). 
+
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
@@ -19,21 +10,25 @@
 %% --------------------------------------------------------------------
 %% Behavioural exports
 %% --------------------------------------------------------------------
-
-
 -export([
-         get/1,
-	 start/1
-        ]).
+	 spec_list/0,
+	 status/0,
+	 desired_state/0,
+	 loaded/0,
+	 allocate/1,
+	 deallocate/2,
+	 boot/0
+	]).
 
 %% --------------------------------------------------------------------
 %% Internal exports
 %% --------------------------------------------------------------------
-
+-export([start/0,
+	 stop/0]).
 %% --------------------------------------------------------------------
 %% Macros
 %% --------------------------------------------------------------------
-
+-define(SERVER,controller_server).
 %% --------------------------------------------------------------------
 %% Records
 %% --------------------------------------------------------------------
@@ -42,33 +37,51 @@
 %% API Functions
 %% --------------------------------------------------------------------
 
+
 %% ====================================================================!
 %% External functions
 %% ====================================================================!
+
 %% --------------------------------------------------------------------
 %% Func: start/2
 %% Returns: {ok, Pid}        |
 %%          {ok, Pid, State} |
 %%          {error, Reason}
 %% --------------------------------------------------------------------
-%,[{myamath,"1.0.0",1,["C200"]}],
-%%---------------------------------------------------------------------
-start(File)->
-    {ok,[Nodes]}=file:consult(File),
-    [Node||Node<-Nodes,
-	   true=:=net_kernel:connect_node(Node)].
-   
- %% --------------------------------------------------------------------
+boot()->
+    application:start(?SERVER).
+
+
+%% --------------------------------------------------------------------
 %% Func: start/2
 %% Returns: {ok, Pid}        |
 %%          {ok, Pid, State} |
 %%          {error, Reason}
 %% --------------------------------------------------------------------
-%,[{myamath,"1.0.0",1,["C200"]}],
-%%---------------------------------------------------------------------
-get(File)->
-    {ok,[Nodes]}=file:consult(File),
-    Nodes.
-    
-  
-    
+start()-> gen_server:start_link({local, ?SERVER}, ?SERVER, [], []).
+stop()-> gen_server:call(?SERVER, {stop},infinity).
+
+
+
+desired_state()->
+    gen_server:cast(?SERVER, {desired_state}).
+
+loaded()->
+    gen_server:call(?SERVER, {loaded},infinity).
+
+spec_list()->
+    gen_server:call(?SERVER, {spec_list},infinity).
+
+status()->
+    gen_server:call(?SERVER, {status},infinity).
+
+allocate(App)->
+    gen_server:call(?SERVER, {allocate,App},infinity).
+
+deallocate(Node,App)->
+    gen_server:cast(?SERVER, {deallocate,Node,App}).    
+
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
+

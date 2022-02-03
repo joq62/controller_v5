@@ -22,10 +22,6 @@
 
 %% External exports
 -export([
-	 get_spec/2,
-	 actual_state/0,
-	 load_read_specs/0,
-	
 	 read_state/0,
 	 ping/0
 	]).
@@ -40,7 +36,7 @@
 -export([init/1, handle_call/3,handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {
-		service_specs_info
+		
 	       }).
 
 %% ====================================================================
@@ -59,49 +55,7 @@ stop()-> gen_server:call(?SERVER, {stop},infinity).
 %% ====================================================================
 %% Application handling
 %% ====================================================================
-%%---------------------------------------------------------------
-%% Function: get_spec(Name,Vsn)
-%% @doc: retreive Service info        
-%% @param: Name,Vsn
-%% @returns:[SeviceSpecInfo]|{error,eexists}
-%%
-%%---------------------------------------------------------------
--spec get_spec(string(),string())->  [term()]|{atom(),list()}.
-get_spec(Name,Vsn)->
-    gen_server:call(?SERVER, {get_spec,Name,Vsn},infinity).
 
-%%---------------------------------------------------------------
-%% Function: actual_state()
-%% @doc: evaluta Id and Vms to start and delete        
-%% @param: non
-%% @returns:[{Id,ToStart,ToDelete}]
-%%
-%%---------------------------------------------------------------
--spec actual_state()-> [term()].
-actual_state()->
-    gen_server:call(?SERVER, {actual_state},infinity).
-
-%%---------------------------------------------------------------
-%% Function: load_read_specs()
-%% @doc: git load and read service_specs files        
-%% @param: non
-%% @returns:[ServiceSpecsInfo]|{error,Reason}
-%%
-%%---------------------------------------------------------------
--spec load_read_specs()-> [term()]|{atom(),term()}.
-load_read_specs()->
-    gen_server:call(?SERVER, {load_read_specs},infinity).
-
-%%---------------------------------------------------------------
-%% Function:template()
-%% @doc: service spec template  list of {app,vsn} to run      
-%% @param: 
-%% @returns:[{app,vsn}]
-%%
-%%---------------------------------------------------------------
-%-spec template()-> [{atom(),string()}].
-%template()->
- %   gen_server:call(?SERVER, {template},infinity).
 
 
 %% ====================================================================
@@ -138,12 +92,8 @@ ping()->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-    ok=lib_controller:git_clone_service_specs_files(node()),
-    ServiceSpecsInfoList=lib_controller:read_specs(),
-%    spawn(fun()->do_desired_state() end),
-%    rpc:cast(node(),log,log,[?Log_info("server started",[])]),
-    {ok, #state{
-	    service_specs_info=ServiceSpecsInfoList}
+    
+     {ok, #state{}
     }.
 
 %% --------------------------------------------------------------------
@@ -156,15 +106,6 @@ init([]) ->
 %%          {stop, Reason, Reply, State}   | (terminate/2 is called)
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-
-
-handle_call({get_spec,Name,Vsn},_From, State) ->
-    Reply=lib_controller:get_spec(Name,Vsn,State#state.service_specs_info),
-    {reply, Reply, State};
-
-handle_call({actual_state},_From, State) ->
-    Reply=lib_controller:actual_state(State#state.service_specs_info),
-    {reply, Reply, State};
 
 handle_call({read_state},_From, State) ->
     Reply=State,
@@ -200,6 +141,9 @@ handle_call(Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 
+handle_cast({desired_state}, State) ->
+    spawn(fun()->do_desired_state() end),
+    {noreply, State};
 
 handle_cast(Msg, State) ->
     rpc:cast(node(),log,log,[?Log_ticket("unmatched cast",[Msg])]),
@@ -235,5 +179,17 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 %%% Internal functions
 %% --------------------------------------------------------------------
-
+do_desired_state()->
+    % io:format("~p~n",[{time(),node(),?MODULE,?FUNCTION_NAME,?LINE,CallerPid}]),
+    case bully:am_i_leader(node()) of
+	false->
+	    ok;
+	true->
+	    Result=rpc:call(node(),loader_desired_state,start,[],2*60*1000),
+	    glurk=Result
+						% log:log(?Log_info("Result",[Result]))
+    end,
+    
+    timer:sleep(?ScheduleInterval),
+    rpc:cast(node(),loader,desired_state,[]).
 		  

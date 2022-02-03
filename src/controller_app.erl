@@ -1,7 +1,7 @@
 %% Author: uabjle
 %% Created: 10 dec 2012
 %% Description: TODO: Add description to application_org
--module(controller_app). 
+-module(controller_app).  
 
 -behaviour(application).
 %% --------------------------------------------------------------------
@@ -48,7 +48,6 @@
 %% --------------------------------------------------------------------
 
 
-
 %% --------------------------------------------------------------------
 %% Func: start/2
 %% Returns: {ok, Pid}        |
@@ -71,5 +70,5 @@ stop(_State) ->
 %% Internal functions
 %% ====================================================================
 init()->
-   
+ 
     ok.

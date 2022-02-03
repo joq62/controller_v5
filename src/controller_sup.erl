@@ -61,7 +61,8 @@ init([]) ->
     }.
 
 children()->
-    [?CHILD(controller,worker)
+    [
+     ?CHILD(controller,worker)
      ].
 %% ====================================================================
 %% Internal functions
